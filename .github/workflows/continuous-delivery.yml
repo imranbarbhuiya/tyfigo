@@ -13,7 +13,7 @@ on:
       repository:
         description: The {owner}/{repository} that is being deployed.
         required: false
-        default: imranbarbhuiya/package-template
+        default: imranbarbhuiya/tyfig
   push:
     branches:
       - main
@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-          repository: ${{ github.event.inputs.repository || 'imranbarbhuiya/package-template' }}
+          repository: ${{ github.event.inputs.repository || 'imranbarbhuiya/tyfig' }}
           ref: ${{ github.event.inputs.ref || 'main' }}
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2.2.0
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
       - name: Checkout Project
         uses: actions/checkout@v7.0.1
@@ -80,3 +80,7 @@ jobs:
           npm publish --provenance --tag latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}

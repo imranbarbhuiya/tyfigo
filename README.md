@@ -1,61 +1,22 @@
 <div align="center">
 
-# @imranbarbhuiya/package-template
+# tyfig
 
-**Template for Parbez's Repositories.**
+**Import YAML, TOML, JSON5, INI and .env files into TypeScript with full type inference.**
 
-[![GitHub](https://img.shields.io/github/license/imranbarbhuiya/package-template)](https://github.com/imranbarbhuiya/package-template/blob/main/LICENSE)
-[![codecov](https://codecov.io/gh/imranbarbhuiya/package-template/branch/main/graph/badge.svg?token=token)](https://codecov.io/gh/imranbarbhuiya/package-template)
-[![npm](https://img.shields.io/npm/v/@imranbarbhuiya/package-template?color=crimson&logo=npm&style=flat-square)](https://www.npmjs.com/package/@imranbarbhuiya/package-template)
+[![GitHub](https://img.shields.io/github/license/imranbarbhuiya/tyfig)](https://github.com/imranbarbhuiya/tyfig/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/v/tyfig?color=crimson&logo=npm&style=flat-square)](https://www.npmjs.com/package/tyfig)
 
 </div>
 
-## Steps after creating a repo with this template
-
-1. Find and replace all instances of `template` with the package name.
-2. Ensure branch protection is on
-3. Enable Codecov for the repository
-4. Add `CODECOV_TOKEN` to the repository secrets and set up npm trusted publishing
-5. Remove this section from the README
-
-## Description
-
-A description of the package.
-
-Read Full Documentation [here](https://template.js.org/).
-
-## Features
-
-- Written in TypeScript with [Effect](https://effect.website)
-- A plain Promise API, and an Effect API with typed errors
-- ESM only
+> [!WARNING]
+> tyfig is in early development and not usable yet.
 
 ## Install
 
-You can use the following command to install this package, or replace npm install with your package manager of choice.
-
 ```bash
-npm i @imranbarbhuiya/package-template
+npm i tyfig
 ```
-
-## Usage
-
-```ts
-import { greet } from '@imranbarbhuiya/package-template';
-
-const greeting = await greet('Parbez');
-```
-
-Effect users get typed errors and tracing from the `/effect` entry point:
-
-```ts
-import { greet } from '@imranbarbhuiya/package-template/effect';
-import { Effect } from 'effect';
-
-const program = greet('Parbez').pipe(Effect.catchTag('EmptyNameError', () => Effect.succeed('Hello!')));
-```
-
-### Some contents goes here
 
 ## Buy me some doughnuts
 
@@ -69,6 +30,6 @@ If you want to support me by donating, you can do so by using any of the followi
 
 Thanks goes to these wonderful people:
 
-<a href="https://github.com/imranbarbhuiya/package-template/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=imranbarbhuiya/package-template" />
+<a href="https://github.com/imranbarbhuiya/tyfig/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=imranbarbhuiya/tyfig" />
 </a>

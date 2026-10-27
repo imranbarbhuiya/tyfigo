@@ -107,10 +107,6 @@ out
 .nuxt
 dist
 
-# TypeDoc output
-
-docs
-
 # Gatsby files
 
 .cache/

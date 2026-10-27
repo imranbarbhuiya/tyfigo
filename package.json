@@ -1,19 +1,27 @@
 {
-	"name": "@imranbarbhuiya/package-template",
-	"version": "0.0.1",
-	"description": "Package description.",
+	"name": "tyfig",
+	"version": "0.0.0",
+	"description": "Import YAML, TOML, JSON5, INI and .env files into TypeScript with full type inference",
 	"keywords": [
-		"some keywords"
+		"config",
+		"content-mapper",
+		"dotenv",
+		"effect",
+		"ini",
+		"json5",
+		"toml",
+		"typescript",
+		"yaml"
 	],
-	"homepage": "https://template.js.org/",
+	"homepage": "https://github.com/imranbarbhuiya/tyfig#readme",
 	"bugs": {
-		"url": "https://github.com/imranbarbhuiya/template/issues"
+		"url": "https://github.com/imranbarbhuiya/tyfig/issues"
 	},
 	"license": "MIT",
 	"author": "Parbez <imranbarbhuiya.fsd@gmail.com>",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/imranbarbhuiya/template.git"
+		"url": "git+https://github.com/imranbarbhuiya/tyfig.git"
 	},
 	"files": [
 		"dist"
@@ -35,7 +43,6 @@
 	},
 	"scripts": {
 		"build": "tsdown",
-		"docs": "typedoc",
 		"typecheck": "tsc -p tsconfig.json",
 		"lint": "oxlint --fix .",
 		"lint:check": "oxlint .",
@@ -60,8 +67,6 @@
 		"@favware/cliff-jumper": "^6.1.0",
 		"@imranbarbhuiya/oxc-config": "^0.4.1",
 		"@types/node": "^26.6.5",
-		"@typescript/native": "npm:typescript@^7.0.2",
-		"@vitest/coverage-v8": "^5.0.5",
 		"cz-conventional-changelog": "^3.3.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^17.6.0",
@@ -69,8 +74,7 @@
 		"oxlint": "1.89.0",
 		"oxlint-tsgolint": "^7.0.2005",
 		"tsdown": "^0.23.2",
-		"typedoc": "^0.28.20",
-		"typescript": "^6.0.3",
+		"typescript": "7.1.0-beta",
 		"vitest": "^5.0.5"
 	},
 	"lint-staged": {
