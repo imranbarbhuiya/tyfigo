@@ -1,21 +1,21 @@
 <div align="center">
 
-# tyfig
+# tyfigo
 
 **Import YAML, TOML, JSON5, INI and .env files into TypeScript with full type inference.**
 
-[![GitHub](https://img.shields.io/github/license/imranbarbhuiya/tyfig)](https://github.com/imranbarbhuiya/tyfig/blob/main/LICENSE)
-[![npm](https://img.shields.io/npm/v/tyfig?color=crimson&logo=npm&style=flat-square)](https://www.npmjs.com/package/tyfig)
+[![GitHub](https://img.shields.io/github/license/imranbarbhuiya/tyfigo)](https://github.com/imranbarbhuiya/tyfigo/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/v/tyfigo?color=crimson&logo=npm&style=flat-square)](https://www.npmjs.com/package/tyfigo)
 
 </div>
 
 > [!WARNING]
-> tyfig is in early development and not usable yet.
+> tyfigo is in early development and not usable yet.
 
 ## Install
 
 ```bash
-npm i tyfig
+npm i tyfigo
 ```
 
 ## Buy me some doughnuts
@@ -30,6 +30,6 @@ If you want to support me by donating, you can do so by using any of the followi
 
 Thanks goes to these wonderful people:
 
-<a href="https://github.com/imranbarbhuiya/tyfig/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=imranbarbhuiya/tyfig" />
+<a href="https://github.com/imranbarbhuiya/tyfigo/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=imranbarbhuiya/tyfigo" />
 </a>
