@@ -1,0 +1,36 @@
+name: Deploy Docs On Publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Deploy Docs to gh-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+      - name: Add TypeScript problem matcher
+        run: echo "::add-matcher::.github/problemMatchers/tsc.json"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+      - name: Use Node.js v24
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      - name: Build all packages
+        run: bun run build
+      - name: Generate Docs
+        run: bun run docs
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4.9.0
+        with:
+          branch: gh-pages
+          folder: docs
