@@ -27,7 +27,10 @@
 		"dist"
 	],
 	"type": "module",
-	"sideEffects": false,
+	"sideEffects": [
+		"./dist/register.mjs",
+		"./dist/bun.mjs"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.mts",
@@ -40,6 +43,14 @@
 		"./runtime": {
 			"types": "./dist/runtime/index.d.mts",
 			"import": "./dist/runtime/index.mjs"
+		},
+		"./register": {
+			"types": "./dist/register.d.mts",
+			"import": "./dist/register.mjs"
+		},
+		"./bun": {
+			"types": "./dist/bun.d.mts",
+			"import": "./dist/bun.mjs"
 		}
 	},
 	"publishConfig": {
@@ -75,6 +86,7 @@
 		"@effect/vitest": "^4.0.6",
 		"@favware/cliff-jumper": "^6.1.0",
 		"@imranbarbhuiya/oxc-config": "^0.4.1",
+		"@types/bun": "^1.4.4",
 		"@types/node": "^26.6.5",
 		"arktype": "^2.2.9",
 		"cz-conventional-changelog": "^3.3.0",
