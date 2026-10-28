@@ -1,0 +1,9 @@
+name: api
+port: ${PORT:-3000}
+debug: false
+db:
+  url: postgres://localhost/app
+  pool:
+    min: 1
+    max: 5
+tags: [web, api]

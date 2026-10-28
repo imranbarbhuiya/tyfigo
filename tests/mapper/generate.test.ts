@@ -62,10 +62,11 @@ const cases: readonly { format: Format; suffix: string; base: string; environmen
 const virtualText = (module: GeneratedModule, start: number, length: number) => sliceBytes(module.text, start, length);
 
 /**
- * Every original range a mapping may point at: the key and value span of each path.
+ * Every original range a mapping may point at: the key and value span of each path, and the empty span at the start of the
+ * file that the base file's import maps to.
  */
 const spanTexts = (format: Format, text: string) => {
-	const ranges = new Set<string>();
+	const ranges = new Set<string>(['0:0']);
 	for (const span of format.parse(text).positions.values()) {
 		ranges.add(`${span.keyStart}:${span.keyLength}`);
 		ranges.add(`${span.valueStart}:${span.valueLength}`);
@@ -126,6 +127,9 @@ describe.each(cases)('$format.name', ({ format, suffix, base, environment }) => 
 	it('generates the environment module', () => {
 		expect(environmentModule.diagnostics).toEqual([]);
 		expect(environmentModule.text).toContain(`import type Base from "./app${suffix}";`);
+		expect(mappedFrom(environment, environmentModule, `"./app${suffix}"`)).toEqual([
+			{ original: '', kind: SpanMapKind.Atom },
+		]);
 		expect(environmentModule.text).toMatchSnapshot();
 	});
 
@@ -190,7 +194,9 @@ describe('yaml details', () => {
 		const module = generateTypes('/project/app.production.config.json5', text);
 		expect(module.text).toContain("({ 'my-key': 'no' })");
 		expect(module.text).toContain('({ "port": "x" })');
-		expect(module.mappings.every(([, , , , kind]) => kind === SpanMapKind.Verbatim)).toBe(true);
+		const [baseImport, ...rest] = module.mappings;
+		expect(baseImport?.[4]).toBe(SpanMapKind.Atom);
+		expect(rest.every(([, , , , kind]) => kind === SpanMapKind.Verbatim)).toBe(true);
 	});
 
 	it('quotes keys that are not identifiers', () => {
