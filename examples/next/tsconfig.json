@@ -20,7 +20,16 @@
 	"contentMappers": [
 		{
 			"package": "tyfigo",
-			"extensions": [".config.yaml", ".config.yml", ".config.toml", ".config.jsonc", ".config.json5"]
+			"extensions": [
+				".config.yaml",
+				".config.yml",
+				".config.toml",
+				".config.jsonc",
+				".config.json5",
+				".config.ini",
+				".config.properties",
+				".config.xml"
+			]
 		}
 	],
 	"include": ["next-env.d.ts", "app", "config", "*.ts", "*.mts", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

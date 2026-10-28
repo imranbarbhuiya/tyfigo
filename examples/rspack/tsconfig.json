@@ -14,7 +14,16 @@
 	"contentMappers": [
 		{
 			"package": "tyfigo",
-			"extensions": [".config.yaml", ".config.yml", ".config.toml", ".config.jsonc", ".config.json5"]
+			"extensions": [
+				".config.yaml",
+				".config.yml",
+				".config.toml",
+				".config.jsonc",
+				".config.json5",
+				".config.ini",
+				".config.properties",
+				".config.xml"
+			]
 		}
 	],
 	"include": ["src", "config", "*.ts"]
