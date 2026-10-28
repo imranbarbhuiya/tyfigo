@@ -70,7 +70,7 @@ export class ConfigValidationError extends Data.TaggedError('ConfigValidationErr
 	}
 }
 
-export type { ConfigSource };
+export type { ConfigSource } from './runtime/resolve.ts';
 
 export const configSource = (config: unknown): ConfigSource | undefined => {
 	const source = getConfigSource(config);
