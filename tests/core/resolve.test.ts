@@ -119,6 +119,36 @@ describe('resolveConfig', () => {
 		);
 	});
 
+	it.each([
+		['yaml', 'port: ${PORT:-3000}\nraw: ${PORT}\ntimeout: 30\n', 'timeout: ${TIMEOUT}\n', 10],
+		['toml', 'port = "${PORT:-3000}"\nraw = "${PORT}"\ntimeout = 30\n', 'timeout = "${TIMEOUT}"\n', 12],
+		['ini', 'port = ${PORT:-3000}\nraw = ${PORT}\ntimeout = 30\n', 'timeout = ${TIMEOUT}\n', 11],
+	])(
+		'types whole-value placeholders in %s by their default or the base key',
+		async (extension, base, layer, column) => {
+			const root = await makeProject({
+				'package.json': '{}',
+				[`app.config.${extension}`]: base,
+				[`app.production.config.${extension}`]: layer,
+			});
+			const file = join(root, `app.config.${extension}`);
+			const resolveWith = (env: Record<string, string>) =>
+				resolveConfigSync(file, { env, environment: 'production' });
+
+			const result = resolveWith({ PORT: '8080', TIMEOUT: '60' });
+			expect(result.problems).toEqual([]);
+			expect(result.value).toEqual({ port: 8_080, raw: '8080', timeout: 60 });
+
+			expect(formatProblems(resolveWith({ PORT: 'abc', TIMEOUT: 'abc' }).problems)).toBe(
+				[
+					`${file}:1:${column - 3} - Expected number at 'port', but environment variable 'PORT' is "abc" (placeholder-type)`,
+					`${join(root, `app.production.config.${extension}`)}:1:${column} - Expected number at 'timeout', but environment variable 'TIMEOUT' is "abc" (placeholder-type)`,
+				].join('\n'),
+			);
+			expect(resolveWith({ PORT: '1' }).problems.map((problem) => problem.code)).toEqual(['missing-variable']);
+		},
+	);
+
 	it('reports a missing base file', async () => {
 		const root = await makeProject({ 'package.json': '{}' });
 		const result = resolveConfigSync(join(root, 'app.config.json5'), { env: {} });

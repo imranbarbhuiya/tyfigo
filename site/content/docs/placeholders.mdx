@@ -32,25 +32,29 @@ In TOML, JSONC and JSON5 a placeholder has to be a string, so quote it:
 port = "${PORT:-3000}"
 ```
 
-## Whole values keep their type
+## Whole values are typed
 
-A value that is exactly one placeholder is read with the file's own rules once the variable is filled in. With `PORT=8080`,
-`port: ${PORT}` is the number `8080`, and `"${DEBUG}"` with `DEBUG=true` is the boolean `true` in TOML. A placeholder inside a
-longer string stays a string: `url: http://localhost:${PORT}` is `'http://localhost:8080'`.
+A value that is exactly one placeholder has the same type for tsc and at run time:
 
-The type tsc sees comes from the base file:
+- **In the base file**, it has the type of its default. With `PORT=8080`, `port: ${PORT:-3000}` is the number `8080`. Without a
+  default (`${PORT}` or `${PORT:?message}`), it is a string, so `port: ${PORT}` is `'8080'`.
+- **In an environment or local file**, it has the type of the base key it overrides. If `app.config.yaml` has `port: 3000`,
+  `port: ${PORT}` in `app.production.config.yaml` is the number `8080`.
 
-| In the base file                | Type      |
-| ------------------------------- | --------- |
-| `port: ${PORT:-3000}`           | `number`  |
-| `debug: ${DEBUG:-false}`        | `boolean` |
-| `url: ${DATABASE_URL}`          | `string`  |
-| `name: ${NAME:?required}`       | `string`  |
-| `url: http://localhost:${PORT}` | `string`  |
+The variable is read with the file's own rules for that type (`true` is a boolean in YAML and TOML), and a value that doesn't
+read as that type is a problem. A placeholder inside a longer string stays a string: `url: http://localhost:${PORT}` is
+`'http://localhost:8080'`.
 
-A placeholder with no default is typed `string`, even though `${PORT}` becomes a number at run time. Give it a default to type
-it as a number, or validate it with a [schema](/docs/schemas). In an environment or local file, a placeholder takes the type of
-the base key it overrides.
+| In the base file                | Type      | With `PORT=8080`, `DEBUG=true`, `NAME=api` |
+| ------------------------------- | --------- | ------------------------------------------ |
+| `port: ${PORT:-3000}`           | `number`  | `8080`                                     |
+| `debug: ${DEBUG:-false}`        | `boolean` | `true`                                     |
+| `port: ${PORT}`                 | `string`  | `'8080'`                                   |
+| `name: ${NAME:?required}`       | `string`  | `'api'`                                    |
+| `url: http://localhost:${PORT}` | `string`  | `'http://localhost:8080'`                  |
+
+To get a number from a placeholder with no default, give it a default or validate it with a schema that coerces
+(`z.coerce.number()`, see [Schemas](/docs/schemas)).
 
 ## .env files
 
@@ -78,6 +82,13 @@ A missing variable stops the import with every problem listed:
 ```txt
 Invalid config /srv/app/config/app.config.yaml
 /srv/app/config/app.config.yaml:5:8 - Environment variable 'DATABASE_URL' is not set (missing-variable)
+```
+
+A value that doesn't read as the placeholder's type is a `placeholder-type` problem, at the placeholder:
+
+```txt
+Invalid config /srv/app/config/app.config.yaml
+/srv/app/config/app.production.config.yaml:2:9 - Expected number at 'http.port', but environment variable 'PORT' is "abc" (placeholder-type)
 ```
 
 A malformed placeholder such as `${1PORT}` or an unclosed `${PORT` is an `invalid-placeholder` problem, reported by tsc as

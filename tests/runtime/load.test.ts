@@ -112,6 +112,27 @@ describe('load (server)', () => {
 		);
 	});
 
+	it('converts whole-value placeholders to their default or base type when it runs', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'app.config.toml': 'port = "${PORT:-3000}"\nraw = "${PORT}"\ntimeout = 30\n',
+			'app.production.config.toml': 'timeout = "${TIMEOUT}"\n',
+		});
+		const result = load(join(root, 'app.config.toml'), { target: 'server', environment: 'production', runtime });
+		vi.stubEnv('PORT', '8080');
+		vi.stubEnv('TIMEOUT', '60');
+		expect(await evaluate(root, result.code)).toEqual({ port: 8_080, raw: '8080', timeout: 60 });
+
+		vi.stubEnv('TIMEOUT', 'abc');
+		const error = await evaluateError(await makeProject({}), result.code);
+		expect(error.message).toBe(
+			[
+				`Invalid config ${join(root, 'app.config.toml')}`,
+				`${join(root, 'app.production.config.toml')}:1:12 - Expected number at 'timeout', but environment variable 'TIMEOUT' is "abc" (placeholder-type)`,
+			].join('\n'),
+		);
+	});
+
 	it('watches every layer and .env file that could apply, existing or not', async () => {
 		const root = await makeProject({ 'package.json': '{}', 'config/app.config.jsonc': '{}' });
 		const result = load(join(root, 'config/app.config.jsonc'), {
@@ -261,6 +282,27 @@ describe('load (bundled server)', () => {
 			line: 2,
 			column: 9,
 		});
+	});
+
+	it('leaves environment values to run time', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'app.config.yaml': 'port: ${PORT:-3000}\ntimeout: 30\n',
+			'app.production.config.yaml': 'timeout: ${TIMEOUT}\n',
+		});
+		vi.stubEnv('PORT', 'build-machine');
+		const result = load(join(root, 'app.config.yaml'), {
+			target: 'server',
+			bundle: true,
+			environment: 'production',
+			runtime,
+		});
+		expect(result.problems).toEqual([]);
+
+		vi.stubEnv('PORT', '8080');
+		vi.stubEnv('TIMEOUT', '60');
+		vi.spyOn(process, 'cwd').mockReturnValue(await makeProject({}));
+		expect(await evaluate(root, result.code)).toEqual({ port: 8_080, timeout: 60 });
 	});
 
 	it('reports file problems when it builds and missing variables when it runs', async () => {

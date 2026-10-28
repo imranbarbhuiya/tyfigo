@@ -59,4 +59,4 @@ production values of `app.config.yaml` and nothing from `.env`.
 
 A server bundle inlines the text of every layer file that exists when it builds, including local files, and resolves
 placeholders when it starts, reading `.env` files from the working directory and the environment of the process. A missing
-variable is not a build error; it fails when the server starts. Paths of the build machine are not baked in.
+variable, or one that doesn't read as its placeholder's type, is not a build error; it fails when the server starts. Paths of the build machine are not baked in.

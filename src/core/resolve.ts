@@ -16,7 +16,7 @@ import type { EnvVariables } from './env.ts';
 import type { Format } from './formats/index.ts';
 import type { LayerFile, LayerKind } from './layers.ts';
 import type { LocatedSpan } from './merge.ts';
-import type { PositionMap } from './positions.ts';
+import type { Path, PositionMap } from './positions.ts';
 import type { Problem } from './problems.ts';
 
 export interface ResolveOptions {
@@ -71,6 +71,15 @@ const readText = (file: string) =>
 		catch: (error) => fileProblem(file, 'read-error', `Cannot read ${file}: ${(error as Error).message}`),
 	});
 
+const valueAt = (value: unknown, path: Path): unknown =>
+	path.reduce<unknown>(
+		(current, segment) =>
+			typeof current === 'object' && current !== null && Object.hasOwn(current, segment)
+				? (current as Record<string | number, unknown>)[segment]
+				: undefined,
+		value,
+	);
+
 const mergeLayers = Effect.fn('mergeLayers')(function* <Layer extends LayerFile>(
 	format: Format,
 	files: readonly Layer[],
@@ -92,6 +101,7 @@ const mergeLayers = Effect.fn('mergeLayers')(function* <Layer extends LayerFile>
 		const parsed = format.parse(text, layer.file);
 		problems.push(...parsed.problems);
 		const source = new SourceIndex(text);
+		const base = merged?.value;
 		const resolved =
 			parsed.value === undefined
 				? { value: undefined, problems: [] }
@@ -102,6 +112,7 @@ const mergeLayers = Effect.fn('mergeLayers')(function* <Layer extends LayerFile>
 						file: layer.file,
 						format,
 						variables,
+						baseValueAt: merged && ((path) => valueAt(base, path)),
 					});
 		problems.push(...resolved.problems);
 		layers.push({ file: layer.file, kind: layer.kind, text, value: resolved.value, positions: parsed.positions });

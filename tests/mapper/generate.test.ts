@@ -162,6 +162,24 @@ describe.each(cases)('$format.name', ({ format, suffix, base, environment }) => 
 	});
 });
 
+describe.each([
+	['yaml', 'port: ${PORT:-3000}\nraw: ${PORT}\ndebug: ${DEBUG:-false}\nname: ${NAME:-api}\nsecret: ${SECRET:?set}\n'],
+	[
+		'toml',
+		'port = "${PORT:-3000}"\nraw = "${PORT}"\ndebug = "${DEBUG:-false}"\nname = "${NAME:-api}"\nsecret = "${SECRET:?set}"\n',
+	],
+	[
+		'ini',
+		'port = ${PORT:-3000}\nraw = ${PORT}\ndebug = ${DEBUG:-false}\nname = ${NAME:-api}\nsecret = ${SECRET:?set}\n',
+	],
+])('whole-value placeholder types in %s', (extension, text) => {
+	it('types a placeholder by its default and as a string without one', () => {
+		expect(generateTypes(`/project/app.config.${extension}`, text).text).toBe(
+			'declare const config: {\n\treadonly port: number;\n\treadonly raw: string;\n\treadonly debug: boolean;\n\treadonly name: string;\n\treadonly secret: string;\n};\nexport default config;\n',
+		);
+	});
+});
+
 describe('yaml details', () => {
 	const baseModule = generateTypes('/project/app.config.yaml', yamlBase);
 	const environmentModule = generateTypes('/project/app.production.config.yaml', yamlEnvironment);

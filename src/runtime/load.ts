@@ -185,7 +185,9 @@ const browserModule = Effect.fn('browserModule')(function* (file: string, option
 const bundledServerModule = Effect.fn('bundledServerModule')(function* (file: string, options: LoadOptions) {
 	const environment = options.environment ?? (processEnv().NODE_ENV || undefined);
 	const result = yield* resolveConfig(file, { environment });
-	const problems = result.problems.filter((problem) => problem.code !== 'missing-variable');
+	const problems = result.problems.filter(
+		(problem) => problem.code !== 'missing-variable' && problem.code !== 'placeholder-type',
+	);
 	const root = (yield* findProjectRoot(dirname(result.file))) ?? dirname(result.file);
 	const name = (path: string) => relative(root, path).split(sep).join('/');
 	const bundle: BundledConfig = {

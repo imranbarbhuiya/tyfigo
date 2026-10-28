@@ -13,6 +13,12 @@ export interface PlaceholderInput {
 	readonly file: string;
 	readonly format: Format;
 	readonly variables: EnvVariables;
+	/**
+	 * For an environment or local file, the base value at a path, or `undefined` when the base has no such key. A whole-value
+	 * placeholder converts to that value's type. Without it, a placeholder converts to the type of its default, and stays a string
+	 * when it has none.
+	 */
+	readonly baseValueAt?: ((path: Path) => unknown) | undefined;
 }
 
 export interface PlaceholderResult {
@@ -22,17 +28,24 @@ export interface PlaceholderResult {
 
 const placeholderPattern = /\$\$\{|\$\{([A-Za-z_]\w*)(?:(:-|:\?)([^}]*))?\}|\$\{[^}]*\}?/gu;
 
-const wholeValuePattern = /^\$\{[A-Za-z_]\w*(?:(?::-|:\?)[^}]*)?\}$/u;
+const wholeValuePattern = /^\$\{([A-Za-z_]\w*)(?:(:-|:\?)([^}]*))?\}$/u;
 
 export const hasPlaceholder = (text: string): boolean => text.includes('${');
 
 export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
+export const kindOf = (value: unknown): string =>
+	value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+
+const scalarKinds = new Set(['null', 'boolean', 'number']);
+
 /**
- * Replaces `${VAR}`, `${VAR:-default}` and `${VAR:?message}` in every string value. A string that is exactly one placeholder is
- * read with the format's scalar rules, so `"${PORT}"` with `PORT=8080` becomes `8080`. A placeholder inside a longer string stays
- * a string. `$${` is a literal `${`. Keys are never resolved.
+ * Replaces `${VAR}`, `${VAR:-default}` and `${VAR:?message}` in every string value. A string that is exactly one placeholder takes
+ * the type of its default, or of the base value it overrides (see {@link PlaceholderInput.baseValueAt}), and is read with the
+ * format's scalar rules: `${PORT:-3000}` with `PORT=8080` becomes `8080`, while `${PORT}` stays `'8080'`. A value that does not
+ * read as that type is a problem. A placeholder inside a longer string stays a string. `$${` is a literal `${`. Keys are never
+ * resolved.
  */
 export const resolvePlaceholders = (input: PlaceholderInput): PlaceholderResult => {
 	const problems: Problem[] = [];
@@ -69,7 +82,36 @@ export const resolvePlaceholders = (input: PlaceholderInput): PlaceholderResult 
 		}
 	};
 
+	const convert = (whole: RegExpExecArray, resolved: string, path: Path, failed: boolean): unknown => {
+		const [text, name = '', operator, argument = ''] = whole;
+		const sample = input.baseValueAt
+			? input.baseValueAt(path)
+			: operator === ':-'
+				? input.format.parseScalar(argument)
+				: resolved;
+		if (failed) return sample === undefined ? resolved : sample;
+		const expected = kindOf(sample);
+		if (!scalarKinds.has(expected)) return resolved;
+
+		const value = input.format.parseScalar(resolved);
+		if (kindOf(value) === expected) return value;
+		const variable = input.variables[name];
+		const origin =
+			variable === undefined || (operator === ':-' && variable === '')
+				? `the default of '${name}'`
+				: `environment variable '${name}'`;
+		report(
+			path,
+			text,
+			0,
+			'placeholder-type',
+			`Expected ${expected} at '${formatPath(path) || '(root)'}', but ${origin} is ${JSON.stringify(resolved)}`,
+		);
+		return sample;
+	};
+
 	const resolveString = (text: string, path: Path): unknown => {
+		const reported = problems.length;
 		const occurrences = new Map<string, number>();
 		const resolved = text.replaceAll(
 			placeholderPattern,
@@ -110,7 +152,8 @@ export const resolvePlaceholders = (input: PlaceholderInput): PlaceholderResult 
 				return variable;
 			},
 		);
-		return wholeValuePattern.test(text) && resolved !== '' ? input.format.parseScalar(resolved) : resolved;
+		const whole = wholeValuePattern.exec(text);
+		return whole ? convert(whole, resolved, path, problems.length > reported) : resolved;
 	};
 
 	const visit = (value: unknown, path: Path): unknown => {
