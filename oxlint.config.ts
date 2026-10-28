@@ -24,7 +24,7 @@ export default defineConfig({
 			rules: { 'node-js/no-process-env': 0 },
 		},
 		{
-			files: ['src/core/**', 'src/runtime/**'],
+			files: ['src/core/**', 'src/runtime/**', 'src/index.ts'],
 			rules: { 'node/no-sync': 0 },
 		},
 		{

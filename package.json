@@ -61,6 +61,7 @@
 		"prepare": "husky .github/husky && effect-tsgo patch --typescript --oxlint"
 	},
 	"dependencies": {
+		"@standard-schema/spec": "^1.1.0",
 		"effect": "^4.0.6",
 		"jsonc-eslint-parser": "^3.3.0",
 		"jsonc-parser": "^3.3.1",
@@ -75,6 +76,7 @@
 		"@favware/cliff-jumper": "^6.1.0",
 		"@imranbarbhuiya/oxc-config": "^0.4.1",
 		"@types/node": "^26.6.5",
+		"arktype": "^2.2.9",
 		"cz-conventional-changelog": "^3.3.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^17.6.0",
@@ -83,7 +85,9 @@
 		"oxlint-tsgolint": "^7.0.2005",
 		"tsdown": "^0.23.2",
 		"typescript": "7.1.0-beta",
-		"vitest": "^5.0.5"
+		"valibot": "^1.5.0",
+		"vitest": "^5.0.5",
+		"zod": "^4.6.7"
 	},
 	"lint-staged": {
 		"*": "oxfmt --no-error-on-unmatched-pattern",
