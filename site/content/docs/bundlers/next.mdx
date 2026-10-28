@@ -1,0 +1,86 @@
+---
+title: Next.js
+description: Wrap your Next.js config with withTyfigo for webpack, Turbopack and the type check.
+---
+
+```ts title="next.config.mts"
+import { withTyfigo } from 'tyfigo/next';
+
+export default withTyfigo({});
+```
+
+`withTyfigo(nextConfig, options?)` adds:
+
+- **Loader rules** for webpack and Turbopack. Client components and Edge code get the [browser build](/docs/browser-builds):
+  base and environment files inlined, placeholders fail the build. Node.js server code gets every layer inlined, with `.env`
+  files and environment variables read when the server starts.
+- **A type check that can read config imports.** `next build` type-checks without `--runExternalCode`, so `withTyfigo` turns
+  that check off (`typescript.ignoreBuildErrors`) and runs `tsc --noEmit --runExternalCode` after the production compile.
+  Pass `{ typeCheck: false }` to skip it, for example when CI runs tsc separately.
+
+Options: `environment` (defaults to `NODE_ENV`), `runtime` and `typeCheck`.
+
+## Server and client config
+
+From the [next example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/next):
+
+```yaml title="config/app.config.yaml"
+site:
+  name: tyfigo + Next.js
+  supportEmail: support@localhost
+cms:
+  url: ${CMS_URL}
+  token: ${CMS_TOKEN}
+  revalidateSeconds: 60
+```
+
+```yaml title="config/public.config.yaml"
+theme: light
+banner: Development build
+```
+
+```tsx title="app/page.tsx"
+import { Banner } from './banner.tsx';
+
+import config from '../config/app.config.yaml';
+
+export default function Page() {
+	const cms = new URL(config.cms.url);
+	return (
+		<main>
+			<Banner />
+			<p>{cms.host}</p>
+		</main>
+	);
+}
+```
+
+```tsx title="app/banner.tsx"
+'use client';
+
+import config from '../config/public.config.yaml';
+
+export function Banner() {
+	return <p data-theme={config.theme}>{config.banner}</p>;
+}
+```
+
+`app.config.yaml` has placeholders, so importing it from a client component fails the build. `public.config.yaml` has none.
+
+## Type checking
+
+`next typegen` writes the route types tsc needs, so run it before tsc:
+
+```json title="package.json"
+{
+	"scripts": {
+		"build": "next build",
+		"typecheck": "next typegen && tsc --noEmit --runExternalCode"
+	}
+}
+```
+
+<Callout>
+	With Turbopack, `next build` warns that dynamic filesystem access traces the whole project. That comes from the `.env`
+	lookup in tyfigo's runtime. The build still succeeds.
+</Callout>

@@ -1,0 +1,52 @@
+---
+title: Node
+description: Import config files in Node 24 with --import tyfigo/register.
+---
+
+`tyfigo/register` adds a module load hook (`module.registerHooks`, Node 24 and later) for every `*.config.*` file tyfigo
+claims. Pass it with `--import`:
+
+```json title="package.json"
+{
+	"type": "module",
+	"scripts": {
+		"start": "node --import tyfigo/register src/main.ts",
+		"typecheck": "tsc --noEmit --runExternalCode"
+	}
+}
+```
+
+You can also put it in `NODE_OPTIONS="--import tyfigo/register"`.
+
+```ts title="src/main.ts"
+import { loadConfig, loadEnv } from 'tyfigo';
+import { z } from 'zod';
+
+import config from '../config/app.config.yaml';
+
+const Config = z.object({
+	name: z.string(),
+	server: z.object({ host: z.string(), port: z.number().int().positive() }),
+	database: z.object({
+		url: z.url({ protocol: /^postgres$/ }),
+		pool: z.object({ min: z.number().int(), max: z.number().int() }),
+	}),
+	features: z.array(z.string()),
+});
+
+const Env = z.object({ NODE_ENV: z.enum(['development', 'production', 'test']).default('development') });
+
+const settings = loadConfig(config, Config);
+const env = loadEnv(Env);
+
+console.log(JSON.stringify({ environment: env.NODE_ENV, config: settings }));
+```
+
+The config is resolved when the import is evaluated: layers, `.env` files next to the config file or in the project root, and
+the environment of the process. Any problem throws a `ConfigModuleError` that lists all of them, and the import fails.
+
+The [node example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/node) is a complete project.
+
+<Callout>
+	`node --watch` doesn't restart when a layer or `.env` file changes yet. Bundler dev servers do watch them.
+</Callout>

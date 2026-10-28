@@ -1,0 +1,7 @@
+name: tyfigo
+tagline: Typed, validated app config for TypeScript
+github:
+  user: imranbarbhuiya
+  repo: tyfigo
+  branch: main
+npm: https://www.npmjs.com/package/tyfigo

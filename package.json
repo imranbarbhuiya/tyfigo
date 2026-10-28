@@ -13,7 +13,7 @@
 		"typescript",
 		"yaml"
 	],
-	"homepage": "https://github.com/imranbarbhuiya/tyfigo#readme",
+	"homepage": "https://tyfigo.vercel.app",
 	"bugs": {
 		"url": "https://github.com/imranbarbhuiya/tyfigo/issues"
 	},
@@ -24,7 +24,8 @@
 		"url": "git+https://github.com/imranbarbhuiya/tyfigo.git"
 	},
 	"workspaces": [
-		"examples/*"
+		"examples/*",
+		"site"
 	],
 	"files": [
 		"dist"

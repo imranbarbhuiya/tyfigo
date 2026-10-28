@@ -1,0 +1,90 @@
+---
+title: Introduction
+description: Typed, validated application config for TypeScript, built on TypeScript 7.1 content mappers.
+icon: BookOpen
+---
+
+tyfigo lets you import a config file as a module:
+
+```ts title="src/main.ts"
+import config from '../config/app.config.yaml';
+
+config.server.port; // number
+config.database.url; // string
+```
+
+What you get back is the config for the current environment: `app.config.yaml` merged with `app.production.config.yaml` when
+`NODE_ENV=production`, then with your local overrides, with `${PLACEHOLDERS}` filled in from `.env` files and the real
+environment. The object is deep-frozen.
+
+The type comes from the file. A TypeScript 7.1 [content mapper](https://github.com/microsoft/typescript-go/pull/4712) runs
+inside `tsc` and the editor, so there is no codegen step and no `.d.ts` file to keep in sync. Environment and local files are
+checked against the base file, and a wrong key or value is reported at its line in the YAML.
+
+## Two ways in
+
+1. **Import the file.** `import config from './app.config.yaml'` needs no schema. The type is inferred from the base file and
+   tsc checks every layer against it.
+2. **Add a schema.** `loadConfig(config, schema)` and `loadEnv(schema)` validate with a Standard Schema (Zod, Valibot, ArkType, …)
+   or an Effect Schema, for the rules a file can't express: ranges, URLs, enums, required environment variables.
+
+```ts title="src/main.ts"
+import { loadConfig, loadEnv } from 'tyfigo';
+import { z } from 'zod';
+
+import config from '../config/app.config.yaml';
+
+const Config = z.object({
+	server: z.object({ host: z.string(), port: z.number().int().positive() }),
+	database: z.object({ url: z.url({ protocol: /^postgres$/ }) }),
+});
+
+const settings = loadConfig(config, Config);
+const env = loadEnv(z.object({ NODE_ENV: z.enum(['development', 'production', 'test']).default('development') }));
+```
+
+## What it supports
+
+- **Formats:** YAML, TOML, JSONC, JSON5, INI, `.properties` and XML, for files named `*.config.<ext>`. See [Formats](/docs/formats).
+- **Runtimes:** Node 24+ (`--import tyfigo/register`), Bun, nub, and Jest.
+- **Bundlers:** Vite and Vitest, Next.js (webpack and Turbopack), esbuild and tsup, Rollup, Rolldown and tsdown, webpack, Rspack and Rsbuild.
+- **Effect:** `tyfigo/effect` has Effect versions of the loaders, a `ConfigService` helper, layers and a `ConfigProvider`.
+
+## tyfigo and Motherload
+
+[Motherload](https://motherload.dev) also imports data files through TypeScript 7.1 content mappers, and the two do different jobs.
+
+|            | Motherload                                                                               | tyfigo                                                                                            |
+| ---------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Purpose    | A general data loader: import a data file and get its contents                           | Application config for the current environment                                                    |
+| Files      | Any `.toml`, `.yaml`, `.jsonc`, `.json5`, `.csv`, `.tsv`, `.md`, `.txt`, `.env` you list | Only `*.config.{yaml,yml,toml,jsonc,json5,ini,properties,xml}`                                    |
+| Types      | As `as const` would type the data (literal types)                                        | Widened (`number`, `string`, `readonly string[]`), so other environments can change values        |
+| Layering   | One file, one module                                                                     | Base, environment and local files merged; overrides checked against the base                      |
+| `.env`     | Importing a `.env` file sets its variables on `process.env`, typed as strings            | `.env` files supply values to `${VAR}` placeholders and `loadEnv`; `process.env` is never written |
+| Validation | Parse and type errors in tsc; JSON Schema files through the separate dotschema package   | Parse and type errors in tsc, plus Standard Schema or Effect Schema at run time                   |
+| Effect     | No                                                                                       | `tyfigo/effect`                                                                                   |
+
+They can share a project. TypeScript gives each extension one owner and the longest suffix wins, so tyfigo can own
+`.config.yaml` while Motherload owns `.yaml`:
+
+```jsonc title="tsconfig.json"
+{
+	"contentMappers": [
+		{ "package": "motherload", "extensions": [".yaml", ".toml"] },
+		{ "package": "tyfigo", "extensions": [".config.yaml", ".config.toml"] },
+	],
+}
+```
+
+Use Motherload for content (a list of team members, a CSV of prices, Markdown posts) and tyfigo for the settings your app
+reads at start-up.
+
+## Requirements
+
+- TypeScript `7.1.0-beta` or later, the first release with content mappers.
+- Node 24 or later (tyfigo uses `module.registerHooks`), or Bun.
+
+<Cards>
+	<Card title="Getting started" href="/docs/getting-started" />
+	<Card title="Config files and layering" href="/docs/config-files" />
+</Cards>

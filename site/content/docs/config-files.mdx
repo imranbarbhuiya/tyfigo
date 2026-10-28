@@ -1,0 +1,88 @@
+---
+title: Config files and layering
+description: How tyfigo names, finds and merges base, environment and local config files.
+icon: Layers
+---
+
+## File names
+
+tyfigo only claims files whose name ends in `.config.<ext>`: `app.config.yaml`, `server.config.toml`, `jvm.config.properties`.
+A plain `data.yaml` is left alone, so it can belong to another content mapper or bundler loader.
+
+The part before `.config` is the stem. Every file that shares a stem is a layer of the same config:
+
+| File                               | Layer             | Read when                                               |
+| ---------------------------------- | ----------------- | ------------------------------------------------------- |
+| `app.config.yaml`                  | base              | always                                                  |
+| `app.production.config.yaml`       | environment       | the environment is `production`                         |
+| `app.local.config.yaml`            | local             | always (not in browser builds)                          |
+| `app.production.local.config.yaml` | environment-local | the environment is `production` (not in browser builds) |
+
+You always import the base file. The other layers are found from its name.
+
+## Order
+
+Layers apply in this order, each one over the result of the ones before it:
+
+1. `app.config.yaml`
+2. `app.<environment>.config.yaml`
+3. `app.local.config.yaml`
+4. `app.<environment>.local.config.yaml`
+5. Environment variables, through [placeholders](/docs/placeholders)
+
+Environment files sit next to the base file. Local files are looked for next to the base file first, then in the project root
+(the nearest folder with a `package.json`). Keep local files out of version control:
+
+```txt title=".gitignore"
+*.local.config.*
+.env.local
+```
+
+## The environment name
+
+The environment is `NODE_ENV` by default. Bundler plugins use the bundler's mode instead where there is one (Vite, webpack,
+Rspack, Rsbuild), and every plugin and loader takes an `environment` option:
+
+```ts
+tyfigo({ environment: 'staging' });
+```
+
+With no environment, only the base and `app.local.config.yaml` are read.
+
+## Merging
+
+- Objects merge key by key.
+- Arrays and scalar values replace what was there.
+- An override may only use keys the base file has, with a value of the same kind (string, number, boolean, null, array or object).
+
+```yaml title="config/app.config.yaml"
+server:
+  host: localhost
+  port: ${PORT:-3000}
+features: [search]
+```
+
+```yaml title="config/app.production.config.yaml"
+server:
+  host: 0.0.0.0
+features: [search, billing]
+```
+
+With `NODE_ENV=production`, `config.server` is `{ host: '0.0.0.0', port: 8080 }` (with `PORT=8080`) and `config.features` is
+`['search', 'billing']`.
+
+A key the base file doesn't have, or a value of another kind, is a type error in tsc (see [Type checking](/docs/type-checking))
+and a problem at run time:
+
+```txt
+/srv/app/config/app.production.config.yaml:3:3 - 'server.hostname' is not in app.config.yaml; environment and local files can only override existing keys (unknown-key)
+```
+
+## The imported value
+
+- The default export is the merged config, deep-frozen with `Object.freeze`.
+- Its type is `readonly` all the way down, so assigning to it is a type error too.
+- Each import resolves once, when the module is first evaluated.
+
+Several config files can live side by side. The Vite and Rspack examples use `app.config.*` for browser code and
+`server.config.*` for server code, so server-only values never reach a client bundle (see [Browser builds](/docs/browser-builds)).

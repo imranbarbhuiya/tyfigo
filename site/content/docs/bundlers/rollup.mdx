@@ -1,0 +1,53 @@
+---
+title: Rollup, Rolldown and tsdown
+description: Use tyfigo/rollup and tyfigo/rolldown.
+---
+
+## Rollup
+
+Rollup doesn't know whether it builds for the browser or a server, so the plugin defaults to the
+[browser target](/docs/browser-builds). Set `target: 'server'` for a server bundle:
+
+```js title="rollup.config.js"
+import tyfigo from 'tyfigo/rollup';
+
+export default {
+	input: 'src/server.js',
+	output: { file: 'dist/server.mjs', format: 'es' },
+	external: ['tyfigo/runtime'],
+	plugins: [tyfigo({ target: 'server' })],
+};
+```
+
+## Rolldown
+
+Rolldown's `platform` picks the target: `node` is a server build, `browser` (or `neutral`) a browser build.
+
+```js title="rolldown.config.js"
+import tyfigo from 'tyfigo/rolldown';
+
+export default {
+	input: 'src/server.ts',
+	platform: 'node',
+	output: { file: 'dist/server.mjs', format: 'es' },
+	plugins: [tyfigo()],
+};
+```
+
+## tsdown
+
+tsdown takes Rolldown plugins, and builds for `node` by default:
+
+```ts title="tsdown.config.ts"
+import { defineConfig } from 'tsdown';
+import tyfigo from 'tyfigo/rolldown';
+
+export default defineConfig({
+	entry: ['src/main.ts'],
+	plugins: [tyfigo()],
+});
+```
+
+None of these have a mode, so the environment is `NODE_ENV` unless you pass `environment`. A server build inlines the layer
+files and reads `.env` files and environment variables when it runs, through `tyfigo/runtime`; keep that import external
+when the bundle runs next to an installed `tyfigo`.

@@ -157,3 +157,9 @@ dist
 # Example projects commit their .env with example values
 
 !examples/*/.env
+
+# Docs site build output
+
+site/.tanstack
+.vercel
+site/src/routeTree.gen.ts

@@ -1,0 +1,149 @@
+---
+title: Formats
+description: The eight config formats tyfigo reads and how each one is typed.
+icon: FileCode
+---
+
+| Suffix                        | Format        | Parser                |
+| ----------------------------- | ------------- | --------------------- |
+| `.config.yaml`, `.config.yml` | YAML          | `yaml`                |
+| `.config.toml`                | TOML          | `toml-eslint-parser`  |
+| `.config.jsonc`               | JSONC         | `jsonc-parser`        |
+| `.config.json5`               | JSON5         | `jsonc-eslint-parser` |
+| `.config.ini`                 | INI           | tyfigo                |
+| `.config.properties`          | `.properties` | tyfigo                |
+| `.config.xml`                 | XML           | `@rgrove/parse-xml`   |
+
+Every parser keeps the position of each key and value, which is how errors point at a line and column. An empty file is `{}`.
+A duplicate key is an error in every format. The typing rules on [Type checking](/docs/type-checking) apply to all of them:
+strings, numbers and booleans are widened, arrays are `readonly T[]`, and everything is `readonly`.
+
+## YAML
+
+Typed values as YAML reads them: numbers, booleans, `null`, strings, sequences and mappings. Anchors and aliases work. A file
+with several documents (`---`) is a parse error.
+
+```yaml title="app.config.yaml"
+server:
+  port: ${PORT:-3000}
+  hosts: [a.example.com, b.example.com]
+```
+
+## TOML
+
+Tables are objects and arrays are arrays. Placeholders go in strings: `port = "${PORT:-3000}"`.
+
+```toml title="app.config.toml"
+log_level = "debug"
+
+[server]
+port = "${PORT:-3000}"
+idle_timeout = 10
+```
+
+## JSONC and JSON5
+
+JSONC is JSON with comments and trailing commas. JSON5 adds unquoted keys, single quotes and more. Placeholders go in strings.
+
+```jsonc title="app.config.jsonc"
+{
+	// comments are fine
+	"port": "${PORT:-3000}",
+	"compression": false,
+}
+```
+
+## INI, .properties and XML
+
+These formats store only text, so tyfigo reads every unquoted value with one rule:
+
+- `true` and `false` are booleans.
+- A number is a number only when JavaScript prints it back as the same text: `8080` and `-1.5` are numbers, `08080`, `1.50`
+  and `1e3` stay strings.
+- Anything else is a string, and an empty value is `''`.
+
+### INI
+
+```ini title="app.config.ini"
+; comment
+name = api
+port = 3000
+
+[db]
+url = "postgres://localhost/app" ; inline comment
+version = '1.50'
+
+[server.http]
+hosts[] = a.example.com
+hosts[] = b.example.com
+debug = false
+```
+
+```ts
+// {
+//   readonly name: string; readonly port: number;
+//   readonly db: { readonly url: string; readonly version: string };
+//   readonly server: { readonly http: { readonly hosts: readonly string[]; readonly debug: boolean } };
+// }
+```
+
+- `[a.b]` sections nest. A section that appears twice is merged.
+- `key[] = value` lines build an array.
+- `;` and `#` start a comment at the start of a line or after whitespace, so `http://x/#frag` is kept.
+- Quoted values are always strings. Double quotes use JSON escapes; single quotes are literal.
+
+### .properties
+
+```properties title="app.config.properties"
+# comment
+! also a comment
+name = api
+port=3000
+db.url: postgres://localhost/app
+db.pool 5
+message = hello \
+    world
+dotted\.key = 1.50
+```
+
+```ts
+// {
+//   readonly name: string; readonly port: number;
+//   readonly db: { readonly url: string; readonly pool: number };
+//   readonly message: string; readonly "dotted.key": string;
+// }
+```
+
+- Keys and values are separated by `=`, `:` or whitespace.
+- Dots in keys nest (`db.url` is `db: { url }`); an escaped `\.` keeps the dot in the key.
+- A trailing `\` continues the line. `\uXXXX`, `\t`, `\n` and the other Java escapes work.
+
+### XML
+
+```xml title="app.config.xml"
+<config env="prod" debug="true">
+  <name>api</name>
+  <port>3000</port>
+  <db url="postgres://localhost/app" pool="5"/>
+  <tags><tag>a</tag><tag>b</tag></tags>
+  <server host="a">text &amp; more</server>
+</config>
+```
+
+```ts
+// {
+//   readonly config: {
+//     readonly "@env": string; readonly "@debug": boolean;
+//     readonly name: string; readonly port: number;
+//     readonly db: { readonly "@url": string; readonly "@pool": number };
+//     readonly tags: { readonly tag: readonly string[] };
+//     readonly server: { readonly "@host": string; readonly "#text": string };
+//   };
+// }
+```
+
+- The root element is the top-level key.
+- Attributes become `@name` keys.
+- An element with only text is a value. An element with attributes or children is an object, and its text is `#text`.
+- A child element that appears more than once is an array. One that appears once is not, so keep repeated items repeated in the base file.
+- An empty element is `''`. CDATA is text.

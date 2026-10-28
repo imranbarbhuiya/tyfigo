@@ -1,0 +1,164 @@
+---
+title: Schemas
+description: Validate config imports and environment variables with Zod, Valibot, ArkType or Effect Schema.
+icon: ListChecks
+---
+
+The content mapper checks types. A schema adds the rules a file can't express (ranges, URLs, enums, required variables) and
+can transform values. tyfigo accepts any [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType, …) and Effect
+Schema.
+
+```ts
+import { loadConfig, loadConfigAsync, loadEnv, loadEnvAsync, ConfigValidationError } from 'tyfigo';
+```
+
+## loadConfig
+
+`loadConfig(config, schema)` validates a config import (or any value) and returns the schema's output:
+
+```ts title="src/main.ts"
+import { loadConfig } from 'tyfigo';
+import { z } from 'zod';
+
+import config from '../config/app.config.yaml';
+
+const Config = z.object({
+	name: z.string(),
+	server: z.object({ host: z.string(), port: z.number().int().positive() }),
+	database: z.object({
+		url: z.url({ protocol: /^postgres$/ }),
+		pool: z.object({ min: z.number().int(), max: z.number().int() }),
+	}),
+	features: z.array(z.string()),
+});
+
+const settings = loadConfig(config, Config);
+```
+
+The config's type has to fit the schema's input type, so a schema that expects a string where the file has a number is a
+[type error at the call](/docs/type-checking#what-tsc-reports). Keys the schema doesn't list are allowed.
+
+When validation fails it throws a `ConfigValidationError` that lists every issue, each with the `file:line:column` the value
+came from (the environment file that set it, if one did):
+
+```txt
+Invalid config /srv/app/config/app.config.yaml:
+  /srv/app/config/app.config.yaml:2:9 - server.port: Too small: expected number to be >=1
+  /srv/app/config/app.config.yaml:1:1 - server.host: Invalid input: expected string, received undefined
+```
+
+## loadEnv
+
+`loadEnv(schema, options?)` validates environment variables: `.env`, `.env.local`, `.env.<environment>` and
+`.env.<environment>.local`, with the real environment on top. It never writes `process.env`.
+
+```ts
+import { loadEnv } from 'tyfigo';
+import { z } from 'zod';
+
+const env = loadEnv(z.object({ NODE_ENV: z.enum(['development', 'production', 'test']).default('development') }));
+```
+
+| Option        | Default                 | Meaning                                                       |
+| ------------- | ----------------------- | ------------------------------------------------------------- |
+| `cwd`         | `process.cwd()`         | Where to look for `.env` files first, before the project root |
+| `environment` | `env.NODE_ENV`          | Picks `.env.<environment>` and `.env.<environment>.local`     |
+| `env`         | a copy of `process.env` | The real environment variables, which win over every file     |
+
+All variables are strings, so use a schema that coerces (`z.coerce.number()`, `v.transform(Number)`, `Schema.FiniteFromString`)
+for numbers.
+
+## Async schemas
+
+`loadConfig` and `loadEnv` are synchronous. A schema that validates asynchronously (an async refinement, for example) makes them
+throw a `TypeError`. Use `loadConfigAsync` and `loadEnvAsync`, which return promises.
+
+## Libraries
+
+<Tabs items={['Zod', 'Valibot', 'ArkType', 'Effect Schema']}>
+<Tab value="Zod">
+
+```ts
+import { loadConfig, loadEnv } from 'tyfigo';
+import { z } from 'zod';
+
+const settings = loadConfig(
+	config,
+	z.object({ server: z.object({ host: z.string(), port: z.number().int().min(1) }), tags: z.array(z.string().min(2)) }),
+);
+const env = loadEnv(z.object({ PORT: z.coerce.number() }));
+```
+
+</Tab>
+<Tab value="Valibot">
+
+```ts
+import { loadConfig, loadEnv } from 'tyfigo';
+import * as v from 'valibot';
+
+const settings = loadConfig(
+	config,
+	v.object({
+		server: v.object({
+			host: v.string(),
+			port: v.pipe(v.union([v.number(), v.string()]), v.transform(Number), v.integer(), v.minValue(1)),
+		}),
+		tags: v.array(v.pipe(v.string(), v.minLength(2))),
+	}),
+);
+const env = loadEnv(v.object({ PORT: v.pipe(v.string(), v.transform(Number)) }));
+```
+
+</Tab>
+<Tab value="ArkType">
+
+```ts
+import { type } from 'arktype';
+import { loadConfig } from 'tyfigo';
+
+const settings = loadConfig(
+	config,
+	type({
+		server: { host: 'string', port: 'string.integer.parse | number.integer' },
+		tags: 'string >= 2 []',
+	}),
+);
+```
+
+</Tab>
+<Tab value="Effect Schema">
+
+```ts
+import { Schema } from 'effect';
+import { loadConfig, loadEnv } from 'tyfigo';
+
+const settings = loadConfig(
+	config,
+	Schema.Struct({
+		server: Schema.Struct({
+			host: Schema.String,
+			port: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65_535 })),
+		}),
+		tags: Schema.Array(Schema.String.check(Schema.isMinLength(2))),
+	}),
+);
+const env = loadEnv(Schema.Struct({ PORT: Schema.FiniteFromString }));
+```
+
+Effect Schemas are converted with `Schema.toStandardSchemaV1` and report every issue. For schemas that need services, use the
+[Effect API](/docs/effect).
+
+</Tab>
+</Tabs>
+
+## ConfigValidationError
+
+| Property  | Type                                                          |
+| --------- | ------------------------------------------------------------- |
+| `_tag`    | `'ConfigValidationError'`                                     |
+| `subject` | `'config /path/app.config.yaml'` or `'environment variables'` |
+| `issues`  | `readonly { path; message; location? }[]`                     |
+| `message` | Every issue, one per line                                     |
+
+`location` is `file:line:column` for a config import, or the file alone when the key has no position. For `loadEnv`, a `.env`
+file that can't be read is an issue too.

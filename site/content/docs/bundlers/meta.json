@@ -1,0 +1,4 @@
+{
+	"title": "Bundlers",
+	"pages": ["vite", "next", "esbuild", "rollup", "webpack"]
+}

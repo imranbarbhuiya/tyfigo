@@ -1,0 +1,84 @@
+---
+title: Placeholders and .env
+description: Fill config values from environment variables and .env files.
+icon: Variable
+---
+
+## Syntax
+
+A string value can refer to an environment variable:
+
+| Placeholder       | Value                                                                     |
+| ----------------- | ------------------------------------------------------------------------- |
+| `${VAR}`          | The value of `VAR`. A problem when `VAR` is not set                       |
+| `${VAR:-default}` | The value of `VAR`, or `default` when `VAR` is unset or empty             |
+| `${VAR:?message}` | The value of `VAR`. A problem with `message` when `VAR` is unset or empty |
+| `$${`             | A literal `${`                                                            |
+
+Placeholders are resolved in values only, never in keys.
+
+```yaml title="config/app.config.yaml"
+http:
+  port: ${PORT:-3000}
+database:
+  url: ${DATABASE_URL}
+  password: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env.local}
+```
+
+In TOML, JSONC and JSON5 a placeholder has to be a string, so quote it:
+
+```toml title="config/app.config.toml"
+[server]
+port = "${PORT:-3000}"
+```
+
+## Whole values keep their type
+
+A value that is exactly one placeholder is read with the file's own rules once the variable is filled in. With `PORT=8080`,
+`port: ${PORT}` is the number `8080`, and `"${DEBUG}"` with `DEBUG=true` is the boolean `true` in TOML. A placeholder inside a
+longer string stays a string: `url: http://localhost:${PORT}` is `'http://localhost:8080'`.
+
+The type tsc sees comes from the base file:
+
+| In the base file                | Type      |
+| ------------------------------- | --------- |
+| `port: ${PORT:-3000}`           | `number`  |
+| `debug: ${DEBUG:-false}`        | `boolean` |
+| `url: ${DATABASE_URL}`          | `string`  |
+| `name: ${NAME:?required}`       | `string`  |
+| `url: http://localhost:${PORT}` | `string`  |
+
+A placeholder with no default is typed `string`, even though `${PORT}` becomes a number at run time. Give it a default to type
+it as a number, or validate it with a [schema](/docs/schemas). In an environment or local file, a placeholder takes the type of
+the base key it overrides.
+
+## .env files
+
+Placeholders read from these files, each later one winning over the ones before it:
+
+1. `.env`
+2. `.env.local`
+3. `.env.<environment>`
+4. `.env.<environment>.local`
+
+The real environment variables win over all of them. Each file is looked for next to the base config file first, then in the
+project root (the nearest folder with a `package.json`). `.env` files are parsed with Node's `util.parseEnv`.
+
+tyfigo never writes `process.env`. `.env` files only supply values to placeholders and to [`loadEnv`](/docs/schemas#loadenv); they are never imported as modules.
+
+<Callout title="Bundled servers">
+	A server bundle built with a bundler plugin reads `.env` files from the working directory when it starts, not from the
+	machine that built it. See [Browser builds](/docs/browser-builds) for what client bundles do.
+</Callout>
+
+## Problems
+
+A missing variable stops the import with every problem listed:
+
+```txt
+Invalid config /srv/app/config/app.config.yaml
+/srv/app/config/app.config.yaml:5:8 - Environment variable 'DATABASE_URL' is not set (missing-variable)
+```
+
+A malformed placeholder such as `${1PORT}` or an unclosed `${PORT` is an `invalid-placeholder` problem, reported by tsc as
+well as at run time.

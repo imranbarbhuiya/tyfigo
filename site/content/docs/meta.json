@@ -1,0 +1,20 @@
+{
+	"title": "Docs",
+	"pages": [
+		"index",
+		"getting-started",
+		"---Guides---",
+		"config-files",
+		"placeholders",
+		"type-checking",
+		"schemas",
+		"effect",
+		"formats",
+		"browser-builds",
+		"errors",
+		"---Runtimes and tests---",
+		"...runtimes",
+		"---Bundlers---",
+		"...bundlers"
+	]
+}

@@ -1,0 +1,146 @@
+---
+title: Getting started
+description: Install tyfigo, register the content mapper and import your first config file.
+icon: Rocket
+---
+
+## Install
+
+tyfigo needs TypeScript 7.1, the first release with content mappers.
+
+```bash
+npm i tyfigo
+npm i -D typescript@7.1.0-beta
+```
+
+tyfigo is a run-time dependency: the module a config import turns into reads `.env` files and the environment when your app
+starts.
+
+## Register the content mapper
+
+Add tyfigo to `contentMappers` in `tsconfig.json`, with every suffix you want it to own, and include the folder your config
+files live in:
+
+```jsonc title="tsconfig.json"
+{
+	"compilerOptions": {
+		"module": "nodenext",
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+	},
+	"contentMappers": [
+		{
+			"package": "tyfigo",
+			"extensions": [
+				".config.yaml",
+				".config.yml",
+				".config.toml",
+				".config.jsonc",
+				".config.json5",
+				".config.ini",
+				".config.properties",
+				".config.xml",
+			],
+		},
+	],
+	"include": ["src", "config"],
+}
+```
+
+Including `config` makes tsc check environment and local files even when no code imports them directly.
+
+## Type-check with `--runExternalCode`
+
+`tsc` runs content mappers only when you pass `--runExternalCode`:
+
+```json title="package.json"
+{
+	"scripts": {
+		"typecheck": "tsc --noEmit --runExternalCode"
+	}
+}
+```
+
+Without the flag, tsc can't resolve config imports:
+
+```txt
+tsconfig.json(11,2): error TS18068: Content mappers require the '--runExternalCode' command line flag to be enabled.
+src/main.ts(1,20): error TS2307: Cannot find module '../config/app.config.yaml' or its corresponding type declarations.
+```
+
+## Write a config file
+
+```yaml title="config/app.config.yaml"
+name: tyfigo-node-example
+server:
+  host: localhost
+  port: ${PORT:-3000}
+database:
+  url: ${DATABASE_URL}
+  pool:
+    min: 1
+    max: 5
+features: [search]
+```
+
+```yaml title="config/app.production.config.yaml"
+server:
+  host: 0.0.0.0
+database:
+  pool:
+    max: 20
+features: [search, billing]
+```
+
+```dotenv title=".env"
+DATABASE_URL=postgres://localhost:5432/app
+PORT=8080
+```
+
+## Import it
+
+```ts title="src/main.ts"
+import config from '../config/app.config.yaml';
+
+console.log(config.server.port);
+```
+
+The type of `config` comes from `app.config.yaml`:
+
+```ts
+// const config: {
+//   readonly name: string;
+//   readonly server: { readonly host: string; readonly port: number };
+//   readonly database: { readonly url: string; readonly pool: { readonly min: number; readonly max: number } };
+//   readonly features: readonly string[];
+// }
+```
+
+## Run it
+
+Load tyfigo where your code runs so the import works at run time too. On Node 24:
+
+```bash
+NODE_ENV=production node --import tyfigo/register src/main.ts
+```
+
+With `NODE_ENV=production` the value is `{ name: 'tyfigo-node-example', server: { host: '0.0.0.0', port: 8080 }, … }`. For other
+runtimes and bundlers, see [Node](/docs/runtimes/node), [Bun](/docs/runtimes/bun), [Vite](/docs/bundlers/vite) and the rest of
+the sidebar.
+
+## Editor support
+
+Content mappers run in the TypeScript 7 language server. In VS Code or Cursor, install the **TypeScript (Native Preview)**
+extension (`TypeScriptTeam.native-preview`) and point it at your project's TypeScript, since the extension may bundle an older
+version:
+
+```jsonc title=".vscode/settings.json"
+{
+	"js/ts.experimental.useTsgo": true,
+	"js/ts.tsdk.path": "./node_modules/typescript",
+}
+```
+
+Editors run content mappers only in a trusted workspace. Trust the workspace, and allow the extension to use the workspace
+version of TypeScript when it asks. Hover, go to definition and errors then work across the config file and your code.

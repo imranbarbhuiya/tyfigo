@@ -1,0 +1,60 @@
+---
+title: Bun
+description: Preload tyfigo/bun for bun run, bun test and Bun.build.
+---
+
+Bun imports `.toml`, `.yaml` and a few other formats natively, without layering or placeholders. Preloading `tyfigo/bun`
+registers a Bun plugin that takes over `*.config.*` files:
+
+```toml title="bunfig.toml"
+preload = ["tyfigo/bun"]
+
+[test]
+preload = ["tyfigo/bun"]
+```
+
+```toml title="config/app.config.toml"
+name = "tyfigo-bun-example"
+log_level = "debug"
+
+[server]
+port = "${PORT:-3000}"
+idle_timeout = 10
+
+[redis]
+url = "${REDIS_URL}"
+ttl = 60
+```
+
+```ts title="src/main.ts"
+import config from '../config/app.config.toml';
+
+const listen: { port: number; idleTimeout: number } = {
+	port: config.server.port,
+	idleTimeout: config.server.idle_timeout,
+};
+```
+
+For types, use `"types": ["bun"]` alongside `contentMappers` in `tsconfig.json`, and type-check with
+`tsc --noEmit --runExternalCode`.
+
+## Bun.build
+
+Pass the plugin to `Bun.build`:
+
+```ts title="build.ts"
+import { tyfigo } from 'tyfigo/bun';
+
+await Bun.build({
+	entrypoints: ['src/main.ts'],
+	outdir: 'dist',
+	target: 'bun',
+	plugins: [tyfigo()],
+});
+```
+
+A `browser` target inlines the base and environment files ([Browser builds](/docs/browser-builds)). Other targets inline the
+layer files and read `.env` files and environment variables when the bundle runs.
+
+Bun loads `.env` files into `process.env` on its own; tyfigo reads them itself either way and never writes `process.env`.
+See the [bun example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/bun).
