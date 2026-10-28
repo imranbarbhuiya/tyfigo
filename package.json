@@ -103,6 +103,15 @@
 			"path": "./node_modules/cz-conventional-changelog"
 		}
 	},
+	"typescript": {
+		"contentMapper": {
+			"compilerOptions": [],
+			"exec": [
+				"node",
+				"dist/mapper.mjs"
+			]
+		}
+	},
 	"engines": {
 		"node": ">=24"
 	},
