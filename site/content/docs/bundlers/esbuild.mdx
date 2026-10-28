@@ -21,7 +21,8 @@ await build({
 The target follows `platform`: `node` is a server build, anything else is a [browser build](/docs/browser-builds). esbuild has
 no mode, so the environment is `NODE_ENV` unless you pass `environment`.
 
-A server build inlines the layer files that exist when it builds and reads `.env` files and environment variables from the
+A server build inlines the layer files of its environment that exist when it builds
+([Server bundles](/docs/browser-builds#server-bundles)) and reads `.env` files and environment variables from the
 working directory when the bundle starts. Secrets in `.env` stay out of `dist/main.js`.
 
 ```json5 title="config/app.config.json5"

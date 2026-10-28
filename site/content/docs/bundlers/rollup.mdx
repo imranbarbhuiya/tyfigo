@@ -49,5 +49,5 @@ export default defineConfig({
 ```
 
 None of these have a mode, so the environment is `NODE_ENV` unless you pass `environment`. A server build inlines the layer
-files and reads `.env` files and environment variables when it runs, through `tyfigo/runtime`; keep that import external
+files of that environment ([Server bundles](/docs/browser-builds#server-bundles)) and reads `.env` files and environment variables when it runs, through `tyfigo/runtime`; keep that import external
 when the bundle runs next to an installed `tyfigo`.

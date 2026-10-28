@@ -35,7 +35,7 @@ const listen: { port: number; idleTimeout: number } = {
 };
 ```
 
-For types, use `"types": ["bun"]` alongside `contentMappers` in `tsconfig.json`, and type-check with
+For types, use `"types": ["bun"]` and `"skipLibCheck": true` alongside `contentMappers` in `tsconfig.json`, and type-check with
 `tsc --noEmit --runExternalCode`.
 
 ## Bun.build
@@ -54,7 +54,7 @@ await Bun.build({
 ```
 
 A `browser` target inlines the base and environment files ([Browser builds](/docs/browser-builds)). Other targets inline the
-layer files and read `.env` files and environment variables when the bundle runs.
+layer files of the build's environment ([Server bundles](/docs/browser-builds#server-bundles)) and read `.env` files and environment variables when the bundle runs.
 
 Bun loads `.env` files into `process.env` on its own; tyfigo reads them itself either way and never writes `process.env`.
 See the [bun example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/bun).
