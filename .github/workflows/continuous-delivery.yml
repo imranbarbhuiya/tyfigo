@@ -48,6 +48,7 @@ jobs:
         run: |
           TAG=$([[ ${{ github.event_name }} == 'push' ]] && echo 'next' || echo 'pr-${{ github.event.inputs.prNumber }}')
           bun run bump --preid "${TAG}.$(git rev-parse --verify --short HEAD)" --skip-changelog
+          npm pkg delete scripts.prepare workspaces
           npm publish --provenance --tag ${TAG}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,6 +78,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
+          npm pkg delete scripts.prepare workspaces
           npm publish --provenance --tag latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

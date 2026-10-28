@@ -9,6 +9,7 @@ imported from client code, tyfigo:
 
 1. Inlines the **base and environment files** only, merged at build time. Local files (`app.local.config.*`) are left out.
 2. **Fails the build** on any `${…}` placeholder in those files, so a secret can't be inlined by accident.
+3. **Fails the build** when client code imports `loadEnv` or another [Node.js-only export](#nodejs-only-exports).
 
 ```txt
 Invalid config /srv/app/config/bad.config.yaml
@@ -57,6 +58,25 @@ production values of `app.config.yaml` and nothing from `.env`.
 
 ## Server bundles
 
-A server bundle inlines the text of every layer file that exists when it builds, including local files, and resolves
-placeholders when it starts, reading `.env` files from the working directory and the environment of the process. A missing
-variable, or one that doesn't read as its placeholder's type, is not a build error; it fails when the server starts. Paths of the build machine are not baked in.
+A server bundle fixes the environment when it builds. The environment is the bundler's mode or `NODE_ENV` at build time, unless
+you pass `environment`. The bundle inlines the text of the base file, that environment's file (`app.<env>.config.*`) and the
+local files (`app.local.config.*`, `app.<env>.local.config.*`) that exist when it builds. `NODE_ENV` at run time doesn't change
+which layers apply, so build once per environment, or run the source with `node --import tyfigo/register` when one build has
+to serve several.
+
+When the server starts, the bundle resolves placeholders from the environment of the process and the `.env` files in its
+working directory: `.env`, `.env.local`, `.env.<env>` and `.env.<env>.local`, with the environment it was built for. A missing
+variable, or one that doesn't read as its placeholder's type, is not a build error; it fails when the server starts. Paths of
+the build machine are not baked in.
+
+## Node.js-only exports
+
+`loadEnv`, `loadEnvAsync` and `layerEnv` read `.env` files and environment variables, and `configProviderFromFile` and
+`layerConfigProviderFromFile` read config files from disk. Importing any of them from client code fails the build:
+
+```txt
+/srv/app/src/client.ts:1:1 - loadEnv from 'tyfigo' reads files and environment variables with Node.js, so it cannot run in a browser bundle. Call it in server code, or set the tyfigo plugin's target option to 'server' if this bundle runs on a server.
+```
+
+Next.js with Turbopack reports it as an export that `tyfigo` doesn't have. `loadConfig` and `configProvider` work in the browser. Bundlers that resolve the `browser` export condition get entries of
+`tyfigo` and `tyfigo/effect` without the Node.js-only exports, so a client bundle carries no Node.js code.

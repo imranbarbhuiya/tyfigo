@@ -28,6 +28,8 @@ files live in:
 		"strict": true,
 		"noEmit": true,
 		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"types": ["node"],
 	},
 	"contentMappers": [
 		{
@@ -48,7 +50,9 @@ files live in:
 }
 ```
 
-Including `config` makes tsc check environment and local files even when no code imports them directly.
+Including `config` makes tsc check environment and local files even when no code imports them directly. TypeScript 7 defaults
+`types` to `[]`, so list `node` (or `bun`) yourself. `skipLibCheck` keeps tsc from checking the bundler types that the
+plugin declarations reference, which you only have installed for the bundler you use.
 
 ## Type-check with `--runExternalCode`
 
@@ -65,8 +69,8 @@ Including `config` makes tsc check environment and local files even when no code
 Without the flag, tsc can't resolve config imports:
 
 ```txt
-tsconfig.json(11,2): error TS18068: Content mappers require the '--runExternalCode' command line flag to be enabled.
 src/main.ts(1,20): error TS2307: Cannot find module '../config/app.config.yaml' or its corresponding type declarations.
+tsconfig.json(10,2): error TS18068: Content mappers require the '--runExternalCode' command line flag to be enabled.
 ```
 
 ## Write a config file

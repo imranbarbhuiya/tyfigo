@@ -1,4 +1,4 @@
-import { isServerPlatform, loadConfigImport } from './shared.ts';
+import { configFilePattern, findNodeOnlyImports, isServerPlatform, loadConfigImport } from './shared.ts';
 
 import type { TyfigoPluginOptions, WebpackLikePlatform } from './shared.ts';
 
@@ -11,9 +11,16 @@ export interface TyfigoLoaderContext {
 
 /**
  * A webpack loader for config files, for webpack-compatible loader runners such as Turbopack's. Without a `target` option it
- * detects the target from the compiler's platform when the runner exposes one, and falls back to `browser`.
+ * detects the target from the compiler's platform when the runner exposes one, and falls back to `browser`. Any other module
+ * is returned unchanged, and fails when it imports a tyfigo export that needs Node.js, which is how client code is checked.
  */
-export default function tyfigoLoader(this: TyfigoLoaderContext): string {
+export default function tyfigoLoader(this: TyfigoLoaderContext, source: string): string {
+	if (!configFilePattern.test(this.resourcePath)) {
+		const messages = findNodeOnlyImports(source, this.resourcePath);
+		if (messages.length > 0) throw new Error(messages.join('\n'));
+		return source;
+	}
+
 	const options = this.getOptions();
 	const target =
 		options.target ?? (this._compiler && isServerPlatform(this._compiler.platform) ? 'server' : 'browser');

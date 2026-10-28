@@ -61,8 +61,14 @@ export const withTyfigo = (nextConfig: NextConfig = {}, options: WithTyfigoOptio
 			rules: { ...turbopackRules(loader), ...nextConfig.turbopack?.rules },
 		},
 		webpack: (webpackConfig: { module: { rules: unknown[] } }, context) => {
-			if (!context.isServer || context.nextRuntime === 'edge') webpackConfig.module.rules.push(rule('browser'));
-			else {
+			if (!context.isServer || context.nextRuntime === 'edge') {
+				webpackConfig.module.rules.push(rule('browser'), {
+					test: /\.[cm]?[jt]sx?$/u,
+					exclude: /[\\/]node_modules[\\/]/u,
+					enforce: 'pre',
+					use: [{ loader: loaderPath }],
+				});
+			} else {
 				webpackConfig.module.rules.push(
 					{ ...rule('browser'), issuerLayer: 'ssr' },
 					{ ...rule('server'), issuerLayer: { not: 'ssr' } },

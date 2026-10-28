@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import process from 'node:process';
@@ -42,6 +42,57 @@ export const useRuntime = (): { readonly path: string } => {
 		runtimeDirectory.path = '';
 	});
 	return runtime;
+};
+
+const packageDirectory = { path: '' };
+
+/**
+ * The `.` and `./effect` entries of tyfigo built from source into a `node_modules/tyfigo` package with the same export conditions
+ * as `package.json`. Browser entries are bundled for platform browser, so a Node.js import in them fails this build. Call it at the
+ * top level of a test file and link the package into a fixture with {@link linkPackage}.
+ */
+export const usePackage = (): { readonly path: string } => {
+	const pkg = { path: '' };
+	beforeAll(async () => {
+		packageDirectory.path ||= await mkdtemp(join(tmpdir(), 'tyfigo-package-'));
+		pkg.path = join(packageDirectory.path, 'node_modules', 'tyfigo');
+		const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+			readonly exports: Readonly<Record<string, Readonly<Record<string, string>> | string>>;
+		};
+		const exports: Record<string, Record<string, string>> = {};
+		for (const subpath of ['.', './effect']) {
+			const conditions = manifest.exports[subpath];
+			if (typeof conditions !== 'object') continue;
+			exports[subpath] = {};
+			for (const [condition, target] of Object.entries(conditions)) {
+				if (condition === 'types') continue;
+				exports[subpath][condition] = target;
+				await build({
+					entryPoints: [
+						fileURLToPath(
+							new URL(target.replace(/^\.\/dist\/(.+)\.mjs$/u, '../../src/$1.ts'), import.meta.url),
+						),
+					],
+					bundle: true,
+					platform: condition === 'browser' ? 'browser' : 'node',
+					format: 'esm',
+					outfile: join(pkg.path, target),
+					logLevel: 'silent',
+				});
+			}
+		}
+		await writeFile(join(pkg.path, 'package.json'), JSON.stringify({ name: 'tyfigo', type: 'module', exports }));
+	});
+	afterAll(async () => {
+		await rm(packageDirectory.path, { recursive: true, force: true });
+		packageDirectory.path = '';
+	});
+	return pkg;
+};
+
+export const linkPackage = async (fixture: string, pkg: { readonly path: string }) => {
+	await mkdir(join(fixture, 'node_modules'), { recursive: true });
+	await symlink(pkg.path, join(fixture, 'node_modules', 'tyfigo'), 'dir');
 };
 
 export const fixtureFiles: Record<string, string> = {

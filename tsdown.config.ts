@@ -3,7 +3,9 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
 	entry: [
 		'src/index.ts',
+		'src/index.browser.ts',
 		'src/effect.ts',
+		'src/effect.browser.ts',
 		'src/runtime/index.ts',
 		'src/mapper.ts',
 		'src/register.ts',

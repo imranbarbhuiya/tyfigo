@@ -69,6 +69,7 @@ They can share a project. TypeScript gives each extension one owner and the long
 
 ```jsonc title="tsconfig.json"
 {
+	"compilerOptions": { "skipLibCheck": true, "types": ["node"] },
 	"contentMappers": [
 		{ "package": "motherload", "extensions": [".yaml", ".toml"] },
 		{ "package": "tyfigo", "extensions": [".config.yaml", ".config.toml"] },
