@@ -28,6 +28,10 @@ export interface ResolveOptions {
 	 * The environment name that picks `app.<environment>.config.yaml` and `.env.<environment>`. Defaults to `env.NODE_ENV`.
 	 */
 	readonly environment?: string | undefined;
+	/**
+	 * The layer kinds to read. Defaults to all of them.
+	 */
+	readonly layers?: readonly LayerKind[] | undefined;
 }
 
 export interface ResolvedLayer {
@@ -110,6 +114,7 @@ export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string,
 	let merged: { value: unknown; positions: ReadonlyMap<string, LocatedSpan> } | undefined;
 
 	for (const layer of yield* discoverLayers(file, environment)) {
+		if (options.layers && !options.layers.includes(layer.kind)) continue;
 		const read = yield* Effect.result(readText(layer.file));
 		if (Result.isFailure(read)) {
 			problems.push(read.failure);

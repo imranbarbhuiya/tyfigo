@@ -8,6 +8,7 @@ export type ProblemCode =
 	| 'unsupported-file'
 	| 'missing-variable'
 	| 'invalid-placeholder'
+	| 'browser-placeholder'
 	| 'unknown-key'
 	| 'type-mismatch';
 
