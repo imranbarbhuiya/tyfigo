@@ -1,0 +1,241 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`json5 > generates the base module 1`] = `
+"declare const config: {
+	readonly name: string;
+	readonly port: number;
+	readonly 'my-key': boolean;
+	readonly db: {
+		readonly url: string;
+	};
+};
+export default config;
+"
+`;
+
+exports[`json5 > generates the environment module 1`] = `
+"import type Base from "./app.config.json5";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+
+({ port: 16 }) satisfies Override<Config>;
+({ 'my-key': 'no' }) satisfies Override<Config>;
+
+declare const config: Config;
+export default config;
+"
+`;
+
+exports[`jsonc > generates the base module 1`] = `
+"declare const config: {
+	readonly "name": string;
+	readonly "port": number;
+	readonly "db": {
+		readonly "url": string;
+	};
+};
+export default config;
+"
+`;
+
+exports[`jsonc > generates the environment module 1`] = `
+"import type Base from "./app.config.jsonc";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ "port": "3000" }) satisfies Override<Config>;
+({ "db": {} }) satisfies Override<Config>;
+({ "host": "x" }) satisfies Override<At<Config, "db">>;
+
+declare const config: Config;
+export default config;
+"
+`;
+
+exports[`toml > generates the base module 1`] = `
+"declare const config: {
+	readonly name: string;
+	readonly port: number;
+	readonly tags: readonly (string | number)[];
+	readonly db: {
+		readonly url: string;
+	};
+};
+export default config;
+"
+`;
+
+exports[`toml > generates the environment module 1`] = `
+"import type Base from "./app.config.toml";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ port: "3000" }) satisfies Override<Config>;
+({ db: {} }) satisfies Override<Config>;
+({ url: "y" }) satisfies Override<At<Config, "db">>;
+({ size: 1 }) satisfies Override<At<Config, "db">>;
+
+declare const config: Config;
+export default config;
+"
+`;
+
+exports[`type checking > maps errors in json5 environment files to their keys and values 1`] = `
+[
+  {
+    "at": "'my-key'",
+    "file": "app.production.ts",
+    "line": 3,
+    "message": "TS2322: Type 'string' is not assignable to type 'boolean'.",
+  },
+]
+`;
+
+exports[`type checking > maps errors in jsonc environment files to their keys and values 1`] = `
+[
+  {
+    "at": ""port"",
+    "file": "app.production.ts",
+    "line": 2,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": ""host"",
+    "file": "app.production.ts",
+    "line": 3,
+    "message": "TS2353: Object literal may only specify known properties, and '"host"' does not exist in type '{ readonly url?: string; }'.",
+  },
+]
+`;
+
+exports[`type checking > maps errors in toml environment files to their keys and values 1`] = `
+[
+  {
+    "at": "port",
+    "file": "app.production.ts",
+    "line": 1,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": "size",
+    "file": "app.production.ts",
+    "line": 5,
+    "message": "TS2353: Object literal may only specify known properties, and 'size' does not exist in type '{ readonly url?: string; }'.",
+  },
+]
+`;
+
+exports[`type checking > maps errors in yaml environment files to their keys and values 1`] = `
+[
+  {
+    "at": "debug",
+    "file": "app.production.ts",
+    "line": 2,
+    "message": "TS2322: Type 'string' is not assignable to type 'boolean'.",
+  },
+  {
+    "at": "unknown",
+    "file": "app.production.ts",
+    "line": 3,
+    "message": "TS2353: Object literal may only specify known properties, and 'unknown' does not exist in type '{ readonly name?: string; readonly port?: number; readonly host?: string; readonly url?: string; readonly debug?: boolean; readonly ratio?: number; readonly nothing?: null; readonly db?: { readonly url?: string; readonly pool?: ...; }; readonly tags?: ...; readonly mixed?: ...; readonly plugins?: ...; readonly extra...'.",
+  },
+  {
+    "at": "min",
+    "file": "app.production.ts",
+    "line": 6,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": "oops",
+    "file": "app.production.ts",
+    "line": 7,
+    "message": "TS2353: Object literal may only specify known properties, and 'oops' does not exist in type '{ readonly min?: number; readonly max?: number; }'.",
+  },
+  {
+    "at": "1",
+    "file": "app.production.ts",
+    "line": 9,
+    "message": "TS2322: Type 'number' is not assignable to type 'string'.",
+  },
+]
+`;
+
+exports[`yaml > generates the base module 1`] = `
+"declare const config: {
+	readonly name: string;
+	readonly port: number;
+	readonly host: string;
+	readonly url: string;
+	readonly debug: boolean;
+	readonly ratio: number;
+	readonly nothing: null;
+	readonly db: {
+		readonly url: string;
+		readonly pool: {
+			readonly min: number;
+			readonly max: number;
+		};
+	};
+	readonly tags: readonly string[];
+	readonly mixed: readonly (number | string | boolean | null | {
+		readonly a: number;
+	} | {
+		readonly b: number;
+	} | readonly number[])[];
+	readonly plugins: readonly unknown[];
+	readonly extra: {};
+};
+export default config;
+"
+`;
+
+exports[`yaml > generates the environment module 1`] = `
+"import type Base from "./app.config.yaml";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ port: (undefined as never) }) satisfies Override<Config>;
+({ debug: "yes" }) satisfies Override<Config>;
+({ unknown: 1 }) satisfies Override<Config>;
+({ db: {} }) satisfies Override<Config>;
+({ pool: {} }) satisfies Override<At<Config, "db">>;
+({ min: "1" }) satisfies Override<At<At<Config, "db">, "pool">>;
+({ oops: 2 }) satisfies Override<At<At<Config, "db">, "pool">>;
+({ url: "x" }) satisfies Override<At<Config, "db">>;
+({ tags: [1, "x"] }) satisfies Override<Config>;
+
+declare const config: Config;
+export default config;
+"
+`;
