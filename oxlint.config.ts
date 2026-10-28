@@ -13,6 +13,23 @@ export default defineConfig({
 		typeAware: true,
 	},
 	rules: {
-		'mahir-effect/no-run-outside-edge': [2, { allow: ['src/index.ts', '**/*.test.ts', '**/scripts/**'] }],
+		'mahir-effect/no-run-outside-edge': [
+			2,
+			{ allow: ['src/index.ts', 'src/core/sync.ts', '**/*.test.ts', '**/scripts/**'] },
+		],
 	},
+	overrides: [
+		{
+			files: ['src/core/env.ts'],
+			rules: { 'node-js/no-process-env': 0 },
+		},
+		{
+			files: ['src/core/**'],
+			rules: { 'node/no-sync': 0 },
+		},
+		{
+			files: ['tests/**'],
+			rules: { 'no-template-curly-in-string': 0, 'node/no-sync': 0 },
+		},
+	],
 });
