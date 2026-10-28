@@ -112,6 +112,7 @@
 		"prepare": "husky .github/husky && effect-tsgo patch --typescript --oxlint"
 	},
 	"dependencies": {
+		"@rgrove/parse-xml": "^5.0.0",
 		"@standard-schema/spec": "^1.1.0",
 		"effect": "^4.0.6",
 		"jsonc-eslint-parser": "^3.3.0",

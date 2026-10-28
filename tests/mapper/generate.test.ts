@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { json5, jsonc, toml, yaml } from '../../src/core/formats/index.ts';
+import { ini, json5, jsonc, properties, toml, xml, yaml } from '../../src/core/formats/index.ts';
 import { SourceIndex } from '../../src/core/positions.ts';
 import { configFileRole, generateTypes, SpanMapKind } from '../../src/mapper/generate.ts';
 import { makeProject, sliceBytes } from '../helpers.ts';
@@ -51,12 +51,23 @@ const jsoncBase = '{\n\t// comment\n\t"name": "api",\n\t"port": 3000,\n\t"db": {
 const jsoncEnvironment = '{\n\t"port": "3000",\n\t"db": { "host": "x" }\n}\n';
 const json5Base = "{\n\tname: 'api',\n\tport: 3000,\n\t'my-key': true,\n\tdb: { url: 'postgres://x' },\n}\n";
 const json5Environment = "{\n\tport: 0x10,\n\t'my-key': 'no',\n}\n";
+const iniBase = ['name = api', 'port = 3000', 'tags[] = a', 'tags[] = b', '', '[db]', 'url = postgres://x', ''].join(
+	'\n',
+);
+const iniEnvironment = ['port = "3000"', 'tags[] = c', '', '[db]', 'url = y', 'size = 1', ''].join('\n');
+const propertiesBase = 'name=api\nport=3000\ndb.url=postgres://x\n';
+const propertiesEnvironment = 'port = abc\ndb.host = x\n';
+const xmlBase = '<app env="dev">\n\t<name>api</name>\n\t<port>3000</port>\n\t<db url="postgres://x"/>\n</app>\n';
+const xmlEnvironment = '<app env="prod">\n\t<port>abc</port>\n\t<db host="x"/>\n</app>\n';
 
 const cases: readonly { format: Format; suffix: string; base: string; environment: string }[] = [
 	{ format: yaml, suffix: '.config.yaml', base: yamlBase, environment: yamlEnvironment },
 	{ format: toml, suffix: '.config.toml', base: tomlBase, environment: tomlEnvironment },
 	{ format: jsonc, suffix: '.config.jsonc', base: jsoncBase, environment: jsoncEnvironment },
 	{ format: json5, suffix: '.config.json5', base: json5Base, environment: json5Environment },
+	{ format: ini, suffix: '.config.ini', base: iniBase, environment: iniEnvironment },
+	{ format: properties, suffix: '.config.properties', base: propertiesBase, environment: propertiesEnvironment },
+	{ format: xml, suffix: '.config.xml', base: xmlBase, environment: xmlEnvironment },
 ];
 
 const virtualText = (module: GeneratedModule, start: number, length: number) => sliceBytes(module.text, start, length);

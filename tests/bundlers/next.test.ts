@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 
 import { fixtureFiles, useRuntime } from './helpers.ts';
 
+import { configSuffixes } from '../../src/core/index.ts';
 import { typeCheck, withTyfigo } from '../../src/plugins/next.ts';
 import { makeProject } from '../helpers.ts';
 
@@ -126,11 +127,7 @@ describe('withTyfigo', () => {
 			webpack: (webpackConfig: { marked?: boolean }) => ({ ...webpackConfig, marked: true }),
 		});
 		expect(Object.keys(config.turbopack?.rules ?? {})).toEqual([
-			'*.config.yaml',
-			'*.config.yml',
-			'*.config.toml',
-			'*.config.jsonc',
-			'*.config.json5',
+			...configSuffixes.map((suffix) => `*${suffix}`),
 			'*.svg',
 		]);
 		const rules: unknown[] = [];

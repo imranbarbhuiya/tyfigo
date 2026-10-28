@@ -5,12 +5,13 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { configSuffixes } from '../../src/core/formats/index.ts';
 import { makeProject } from '../helpers.ts';
 
 const root = join(import.meta.dirname, '../..');
 const fixtures = join(import.meta.dirname, '../fixtures/mapper');
 const tsc = join(root, 'node_modules/typescript/bin/tsc');
-const extensions = ['.config.yaml', '.config.yml', '.config.toml', '.config.jsonc', '.config.json5'];
+const extensions = configSuffixes;
 
 let tyfigo = '';
 
@@ -168,7 +169,43 @@ describe('content mapper', () => {
 		expect(result).toEqual({
 			status: 2,
 			output: [
-				'data.yaml(1,1): error tyfigo1005: data.yaml is not a config file. tyfigo handles files ending in .config.yaml, .config.yml, .config.toml, .config.jsonc, .config.json5',
+				`data.yaml(1,1): error tyfigo1005: data.yaml is not a config file. tyfigo handles files ending in ${configSuffixes.join(', ')}`,
+			],
+		});
+	});
+
+	it('types INI, .properties and XML files and reports their errors at their lines', async () => {
+		const result = await typeCheck({
+			files: {
+				'server.config.ini': 'port = 3000\n\n[db]\nhosts[] = a\nhosts[] = b\n',
+				'server.production.config.ini': '[db]\nhosts[] = 1\n',
+				'jvm.config.properties': 'heap.max = 512\nheap.gc = g1\n',
+				'jvm.production.config.properties': 'heap.max = big\n',
+				'site.config.xml': '<site lang="en">\n\t<debug>false</debug>\n</site>\n',
+				'site.production.config.xml': '<site lang="de">\n\t<debug>no</debug>\n</site>\n',
+				'index.ts': [
+					"import server from './server.config.ini';",
+					"import serverProduction from './server.production.config.ini';",
+					"import jvm from './jvm.config.properties';",
+					"import jvmProduction from './jvm.production.config.properties';",
+					"import site from './site.config.xml';",
+					"import siteProduction from './site.production.config.xml';",
+					'const port: number = server.port;',
+					'const hosts: readonly string[] = server.db.hosts;',
+					'const max: number = jvm.heap.max;',
+					"const lang: string = site.site['@lang'];",
+					'const debug: boolean = site.site.debug;',
+					'export { port, hosts, max, lang, debug, serverProduction, jvmProduction, siteProduction };',
+					'',
+				].join('\n'),
+			},
+		});
+		expect(result).toEqual({
+			status: 2,
+			output: [
+				"jvm.production.config.properties(1,6): error TS2322: Type 'string' is not assignable to type 'number'.",
+				"server.production.config.ini(2,11): error TS2322: Type 'number' is not assignable to type 'string'.",
+				"site.production.config.xml(2,3): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.",
 			],
 		});
 	});

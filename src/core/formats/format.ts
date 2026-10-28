@@ -4,7 +4,7 @@ import { problemAt } from '../problems.ts';
 import type { Path, PositionMap, Span } from '../positions.ts';
 import type { Problem, ProblemCode } from '../problems.ts';
 
-export type FormatName = 'yaml' | 'toml' | 'jsonc' | 'json5';
+export type FormatName = 'yaml' | 'toml' | 'jsonc' | 'json5' | 'ini' | 'properties' | 'xml';
 
 /**
  * A parsed config file. `value` is `undefined` when the file could not be parsed at all. An empty file is `{}`.
@@ -59,3 +59,15 @@ export class ParseContext {
 		return { value, positions: this.positions, problems: this.problems };
 	}
 }
+
+/**
+ * The scalar rule of formats whose values are all text (INI, `.properties` and XML): `true` and `false` are booleans, a number
+ * is a number only when JavaScript prints it back as the same text (`8080`, `-1.5`, not `08080`, `1.50` or `1e3`), and
+ * anything else stays a string.
+ */
+export const inferScalar = (text: string): unknown => {
+	if (text === 'true') return true;
+	if (text === 'false') return false;
+	const number = Number(text);
+	return text !== '' && Number.isFinite(number) && String(number) === text ? number : text;
+};

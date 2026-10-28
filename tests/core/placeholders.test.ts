@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { json5, jsonc, toml, yaml } from '../../src/core/formats/index.ts';
+import { ini, json5, jsonc, properties, toml, xml, yaml } from '../../src/core/formats/index.ts';
 import { resolvePlaceholders } from '../../src/core/placeholders.ts';
 import { SourceIndex } from '../../src/core/positions.ts';
 import { sliceBytes } from '../helpers.ts';
@@ -41,7 +41,7 @@ const expected = {
 	list: [8_080, 'a-api'],
 };
 
-const cases: [Format, string][] = [
+const cases: [Format, string, unknown?][] = [
 	[
 		yaml,
 		[
@@ -116,13 +116,71 @@ const cases: [Format, string][] = [
 			'}',
 		].join('\n'),
 	],
+	[
+		ini,
+		[
+			'port = ${PORT}',
+			'debug = ${DEBUG}',
+			'host = ${HOST:-localhost}',
+			'fallbackPort = ${MISSING_PORT:-3000}',
+			'emptyFallback = ${EMPTY:-x}',
+			'name = ${NAME:?unused}',
+			'url = postgres://${HOST:-db}:${PORT}/app',
+			'embeddedNumber = port ${PORT}',
+			'literal = $${NOT}',
+			"secret = '${SECRET:?SECRET is required}'",
+			'missing = "${NOPE}"',
+			'list[] = ${PORT}',
+			'list[] = a-${NAME}',
+			'',
+		].join('\n'),
+	],
+	[
+		properties,
+		[
+			'port = ${PORT}',
+			'debug = ${DEBUG}',
+			'host = ${HOST:-localhost}',
+			'fallbackPort = ${MISSING_PORT:-3000}',
+			'emptyFallback = ${EMPTY:-x}',
+			'name = ${NAME:?unused}',
+			'url = postgres://${HOST:-db}:${PORT}/app',
+			'embeddedNumber = port ${PORT}',
+			'literal = $${NOT}',
+			'secret = ${SECRET:?SECRET is required}',
+			'missing = ${NOPE}',
+			'',
+		].join('\n'),
+		{ ...expected, list: undefined },
+	],
+	[
+		xml,
+		[
+			'<config>',
+			'\t<port>${PORT}</port>',
+			'\t<debug>${DEBUG}</debug>',
+			'\t<host>${HOST:-localhost}</host>',
+			'\t<fallbackPort>${MISSING_PORT:-3000}</fallbackPort>',
+			'\t<emptyFallback>${EMPTY:-x}</emptyFallback>',
+			'\t<name>${NAME:?unused}</name>',
+			'\t<url>postgres://${HOST:-db}:${PORT}/app</url>',
+			'\t<embeddedNumber>port ${PORT}</embeddedNumber>',
+			'\t<literal>$${NOT}</literal>',
+			'\t<secret>${SECRET:?SECRET is required}</secret>',
+			'\t<missing>${NOPE}</missing>',
+			'\t<list>${PORT}</list>',
+			'\t<list>a-${NAME}</list>',
+			'</config>',
+		].join('\n'),
+		{ config: expected },
+	],
 ];
 
-describe.each(cases)('placeholders in %s', (format, text) => {
+describe.each(cases)('placeholders in %s', (format, text, value = expected) => {
 	const lineOf = (needle: string) => text.split('\n').findIndex((line) => line.includes(needle)) + 1;
 
 	it('resolves whole values with the format, embedded ones as strings', () => {
-		expect(resolve(format, text).value).toEqual(expected);
+		expect(resolve(format, text).value).toEqual(value);
 	});
 
 	it('reports ${VAR:?message} with its message at the placeholder', () => {

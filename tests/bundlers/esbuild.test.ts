@@ -1,8 +1,11 @@
+import { execFile } from 'node:child_process';
 import { join } from 'node:path';
+import process from 'node:process';
+import { promisify } from 'node:util';
 
 import { build } from 'esbuild';
 import { build as tsup } from 'tsup';
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
 	browserPlaceholderError,
@@ -13,6 +16,7 @@ import {
 } from './helpers.ts';
 
 import tyfigo from '../../src/plugins/esbuild.ts';
+import { makeProject } from '../helpers.ts';
 
 import type { Entry } from './helpers.ts';
 
@@ -75,5 +79,45 @@ describe('tsup', () => {
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {
 		await expect(buildTsup(await makeFixture(), 'bad', 'browser')).rejects.toThrow(browserPlaceholderError);
+	});
+});
+
+describe('esbuild with INI, .properties and XML', () => {
+	const files = {
+		'package.json': '{ "type": "module" }',
+		'app.config.ini': 'name = base\n\n[ui]\ntheme = light\n',
+		'app.production.config.ini': '[ui]\ntheme = dark\n',
+		'jvm.config.properties': 'heap.max = 512\n',
+		'jvm.production.config.properties': 'heap.max = 1024\n',
+		'site.config.xml': '<site lang="en"><page>a</page><page>b</page></site>\n',
+		'entry.js': [
+			"import app from './app.config.ini';",
+			"import jvm from './jvm.config.properties';",
+			"import site from './site.config.xml';",
+			'console.log(JSON.stringify({ app, jvm, site }));',
+			'',
+		].join('\n'),
+	};
+	const expected = {
+		app: { name: 'base', ui: { theme: 'dark' } },
+		jvm: { heap: { max: 1_024 } },
+		site: { site: { '@lang': 'en', page: ['a', 'b'] } },
+	};
+
+	it.each(['browser', 'node'] as const)('bundles every format for platform %s', async (platform) => {
+		const fixture = await makeProject(files);
+		const outfile = join(fixture, 'dist', 'entry.mjs');
+		await build({
+			entryPoints: [join(fixture, 'entry.js')],
+			bundle: true,
+			platform,
+			format: 'esm',
+			outfile,
+			external: [runtime.path],
+			logLevel: 'silent',
+			plugins: [tyfigo({ environment: 'production', runtime: runtime.path })],
+		});
+		const { stdout } = await promisify(execFile)(process.execPath, [outfile], { cwd: fixture });
+		expect(JSON.parse(stdout)).toEqual(expected);
 	});
 });
