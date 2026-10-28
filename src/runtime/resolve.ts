@@ -1,8 +1,11 @@
+import { basename, join } from 'node:path';
+import process from 'node:process';
+
 import { Data } from 'effect';
 
-import { formatProblems, pathKey, resolveConfigSync, SourceIndex } from '../core/index.ts';
+import { formatProblems, pathKey, resolveConfigSourcesSync, resolveConfigSync, SourceIndex } from '../core/index.ts';
 
-import type { Path, Problem, ResolvedConfig } from '../core/index.ts';
+import type { LayerSource, Path, Problem, ResolvedConfig } from '../core/index.ts';
 
 /**
  * The key of the non-enumerable {@link ConfigSource} on a config object exported by a generated server module.
@@ -89,12 +92,7 @@ const sourceOf = (result: ResolvedConfig): ConfigSource => {
 	};
 };
 
-/**
- * Resolves a config file with its layers, `.env` files and placeholders, and returns the deep-frozen value. This is what a
- * generated server module calls when it is evaluated. Throws a {@link ConfigModuleError} listing every problem.
- */
-export const resolveConfigModule = (file: string, options: ConfigModuleOptions = {}): unknown => {
-	const result = resolveConfigSync(file, { environment: options.environment });
+const toModule = (result: ResolvedConfig): unknown => {
 	if (result.problems.length > 0) {
 		throw new ConfigModuleError({
 			message: `Invalid config ${result.file}\n${formatProblems(result.problems)}`,
@@ -108,3 +106,31 @@ export const resolveConfigModule = (file: string, options: ConfigModuleOptions =
 	}
 	return deepFreeze(result.value);
 };
+
+/**
+ * Resolves a config file with its layers, `.env` files and placeholders, and returns the deep-frozen value. This is what a
+ * generated server module calls when it is evaluated. Throws a {@link ConfigModuleError} listing every problem.
+ */
+export const resolveConfigModule = (file: string, options: ConfigModuleOptions = {}): unknown =>
+	toModule(resolveConfigSync(file, { environment: options.environment }));
+
+/**
+ * The layer files a bundled server module carries, with paths relative to the project root of the machine that built it.
+ */
+export interface BundledConfig {
+	readonly file: string;
+	readonly environment?: string | undefined;
+	readonly layers: readonly LayerSource[];
+}
+
+/**
+ * {@link resolveConfigModule} for a bundled server module: merges the layers inlined at build time with the `.env` files found
+ * from `process.cwd()` and the environment variables.
+ */
+export const resolveBundledConfigModule = (bundle: BundledConfig): unknown =>
+	toModule(
+		resolveConfigSourcesSync(bundle.file, bundle.layers, {
+			environment: bundle.environment,
+			envFrom: join(process.cwd(), basename(bundle.file)),
+		}),
+	);

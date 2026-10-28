@@ -14,7 +14,7 @@ import { fileProblem } from './problems.ts';
 
 import type { EnvVariables } from './env.ts';
 import type { Format } from './formats/index.ts';
-import type { LayerKind } from './layers.ts';
+import type { LayerFile, LayerKind } from './layers.ts';
 import type { LocatedSpan } from './merge.ts';
 import type { PositionMap } from './positions.ts';
 import type { Problem } from './problems.ts';
@@ -71,58 +71,25 @@ const readText = (file: string) =>
 		catch: (error) => fileProblem(file, 'read-error', `Cannot read ${file}: ${(error as Error).message}`),
 	});
 
-/**
- * Reads a config file with its environment and local layers and `.env` files, resolves placeholders and merges the layers.
- * Never fails: everything that went wrong is in `problems`.
- */
-export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string, options: ResolveOptions = {}) {
-	const file = resolve(path);
-	const env = options.env ?? processEnv();
-	const environment = options.environment ?? (env.NODE_ENV || undefined);
-	const name = parseConfigFileName(basename(file));
-	const empty = {
-		file,
-		format: name?.format,
-		environment,
-		value: undefined,
-		layers: [],
-		envFiles: [],
-		positions: new Map(),
-	};
-	if (!name) {
-		return {
-			...empty,
-			problems: [
-				fileProblem(
-					file,
-					'unsupported-file',
-					`${basename(file)} is not a config file; expected a name ending in ${configSuffixes.join(', ')}`,
-				),
-			],
-		} satisfies ResolvedConfig;
-	}
-	if (!(yield* isFile(file))) {
-		return {
-			...empty,
-			problems: [fileProblem(file, 'file-not-found', `Cannot find ${file}`)],
-		} satisfies ResolvedConfig;
-	}
-
-	const envResult = yield* readEnv(file, { environment, env });
-	const problems: Problem[] = [...envResult.problems];
+const mergeLayers = Effect.fn('mergeLayers')(function* <Layer extends LayerFile>(
+	format: Format,
+	files: readonly Layer[],
+	read: (layer: Layer) => Effect.Effect<string, Problem>,
+	variables: EnvVariables,
+) {
+	const problems: Problem[] = [];
 	const layers: ResolvedLayer[] = [];
 	let merged: { value: unknown; positions: ReadonlyMap<string, LocatedSpan> } | undefined;
 
-	for (const layer of yield* discoverLayers(file, environment)) {
-		if (options.layers && !options.layers.includes(layer.kind)) continue;
-		const read = yield* Effect.result(readText(layer.file));
-		if (Result.isFailure(read)) {
-			problems.push(read.failure);
+	for (const layer of files) {
+		const content = yield* Effect.result(read(layer));
+		if (Result.isFailure(content)) {
+			problems.push(content.failure);
 			continue;
 		}
 
-		const text = read.success;
-		const parsed = name.format.parse(text, layer.file);
+		const text = content.success;
+		const parsed = format.parse(text, layer.file);
 		problems.push(...parsed.problems);
 		const source = new SourceIndex(text);
 		const resolved =
@@ -133,11 +100,11 @@ export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string,
 						positions: parsed.positions,
 						source,
 						file: layer.file,
-						format: name.format,
-						variables: envResult.variables,
+						format,
+						variables,
 					});
 		problems.push(...resolved.problems);
-		layers.push({ ...layer, text, value: resolved.value, positions: parsed.positions });
+		layers.push({ file: layer.file, kind: layer.kind, text, value: resolved.value, positions: parsed.positions });
 		if (resolved.value === undefined) continue;
 
 		if (!merged) {
@@ -157,12 +124,98 @@ export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string,
 		merged = result;
 	}
 
+	return { layers, value: merged?.value, positions: merged?.positions ?? new Map(), problems };
+});
+
+const unsupportedFile = (file: string) =>
+	fileProblem(
+		file,
+		'unsupported-file',
+		`${basename(file)} is not a config file; expected a name ending in ${configSuffixes.join(', ')}`,
+	);
+
+/**
+ * Reads a config file with its environment and local layers and `.env` files, resolves placeholders and merges the layers.
+ * Never fails: everything that went wrong is in `problems`.
+ */
+export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string, options: ResolveOptions = {}) {
+	const file = resolve(path);
+	const env = options.env ?? processEnv();
+	const environment = options.environment ?? (env.NODE_ENV || undefined);
+	const name = parseConfigFileName(basename(file));
+	const empty = {
+		file,
+		format: name?.format,
+		environment,
+		value: undefined,
+		layers: [],
+		envFiles: [],
+		positions: new Map(),
+	};
+	if (!name) return { ...empty, problems: [unsupportedFile(file)] } satisfies ResolvedConfig;
+	if (!(yield* isFile(file))) {
+		return {
+			...empty,
+			problems: [fileProblem(file, 'file-not-found', `Cannot find ${file}`)],
+		} satisfies ResolvedConfig;
+	}
+
+	const envResult = yield* readEnv(file, { environment, env });
+	const files = (yield* discoverLayers(file, environment)).filter(
+		(layer) => !options.layers || options.layers.includes(layer.kind),
+	);
+	const merged = yield* mergeLayers(name.format, files, (layer) => readText(layer.file), envResult.variables);
 	return {
 		...empty,
+		...merged,
 		envFiles: envResult.files,
-		layers,
-		value: merged?.value,
-		positions: merged?.positions ?? new Map(),
-		problems,
+		problems: [...envResult.problems, ...merged.problems],
+	} satisfies ResolvedConfig;
+});
+
+export interface LayerSource extends LayerFile {
+	readonly text: string;
+}
+
+export interface ResolveSourcesOptions {
+	readonly env?: EnvVariables | undefined;
+	readonly environment?: string | undefined;
+	/**
+	 * A path in the directory to search `.env` files from first, before the nearest directory with a `package.json`.
+	 */
+	readonly envFrom: string;
+}
+
+/**
+ * {@link resolveConfig} for layer files whose text was read earlier, such as the layers a bundler inlined at build time. `file`
+ * names the base file and picks the format; it is used as given and never read. Never fails: everything that went wrong is in
+ * `problems`.
+ */
+export const resolveConfigSources = Effect.fn('resolveConfigSources')(function* (
+	file: string,
+	sources: readonly LayerSource[],
+	options: ResolveSourcesOptions,
+) {
+	const env = options.env ?? processEnv();
+	const environment = options.environment ?? (env.NODE_ENV || undefined);
+	const name = parseConfigFileName(basename(file));
+	const empty = {
+		file,
+		format: name?.format,
+		environment,
+		value: undefined,
+		layers: [],
+		envFiles: [],
+		positions: new Map(),
+	};
+	if (!name) return { ...empty, problems: [unsupportedFile(file)] } satisfies ResolvedConfig;
+
+	const envResult = yield* readEnv(options.envFrom, { environment, env });
+	const merged = yield* mergeLayers(name.format, sources, (layer) => Effect.succeed(layer.text), envResult.variables);
+	return {
+		...empty,
+		...merged,
+		envFiles: envResult.files,
+		problems: [...envResult.problems, ...merged.problems],
 	} satisfies ResolvedConfig;
 });
