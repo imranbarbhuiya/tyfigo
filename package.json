@@ -36,6 +36,10 @@
 		"./effect": {
 			"types": "./dist/effect.d.mts",
 			"import": "./dist/effect.mjs"
+		},
+		"./runtime": {
+			"types": "./dist/runtime/index.d.mts",
+			"import": "./dist/runtime/index.mjs"
 		}
 	},
 	"publishConfig": {
