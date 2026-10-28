@@ -8,7 +8,7 @@ import { defineConfig } from 'oxlint';
 
 export default defineConfig({
 	extends: [common, node, typescript, module, tsdoc, effect],
-	ignorePatterns: ['.github/**', 'dist/**', 'coverage/**'],
+	ignorePatterns: ['.github/**', 'dist/**', 'coverage/**', 'examples/**'],
 	options: {
 		typeAware: true,
 	},

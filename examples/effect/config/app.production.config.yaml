@@ -1,0 +1,4 @@
+logLevel: warn
+jobs:
+  workers: 8
+  queues: [default, emails]

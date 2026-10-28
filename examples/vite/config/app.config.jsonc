@@ -1,0 +1,9 @@
+// Shipped to the browser: no placeholders, only the base and environment files are inlined.
+{
+	"title": "tyfigo + Vite",
+	"theme": "light",
+	"api": {
+		"baseUrl": "http://localhost:5173/api",
+		"retries": 1,
+	},
+}

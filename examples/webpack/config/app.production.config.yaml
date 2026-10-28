@@ -1,0 +1,4 @@
+http:
+  cors: [https://example.com]
+mail:
+  sandbox: false

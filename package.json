@@ -23,6 +23,9 @@
 		"type": "git",
 		"url": "git+https://github.com/imranbarbhuiya/tyfigo.git"
 	},
+	"workspaces": [
+		"examples/*"
+	],
 	"files": [
 		"dist"
 	],
@@ -34,55 +37,55 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.mts",
-			"import": "./dist/index.mjs"
+			"default": "./dist/index.mjs"
 		},
 		"./effect": {
 			"types": "./dist/effect.d.mts",
-			"import": "./dist/effect.mjs"
+			"default": "./dist/effect.mjs"
 		},
 		"./runtime": {
 			"types": "./dist/runtime/index.d.mts",
-			"import": "./dist/runtime/index.mjs"
+			"default": "./dist/runtime/index.mjs"
 		},
 		"./register": {
 			"types": "./dist/register.d.mts",
-			"import": "./dist/register.mjs"
+			"default": "./dist/register.mjs"
 		},
 		"./bun": {
 			"types": "./dist/bun.d.mts",
-			"import": "./dist/bun.mjs"
+			"default": "./dist/bun.mjs"
 		},
 		"./vite": {
 			"types": "./dist/plugins/vite.d.mts",
-			"import": "./dist/plugins/vite.mjs"
+			"default": "./dist/plugins/vite.mjs"
 		},
 		"./rollup": {
 			"types": "./dist/plugins/rollup.d.mts",
-			"import": "./dist/plugins/rollup.mjs"
+			"default": "./dist/plugins/rollup.mjs"
 		},
 		"./rolldown": {
 			"types": "./dist/plugins/rolldown.d.mts",
-			"import": "./dist/plugins/rolldown.mjs"
+			"default": "./dist/plugins/rolldown.mjs"
 		},
 		"./esbuild": {
 			"types": "./dist/plugins/esbuild.d.mts",
-			"import": "./dist/plugins/esbuild.mjs"
+			"default": "./dist/plugins/esbuild.mjs"
 		},
 		"./webpack": {
 			"types": "./dist/plugins/webpack.d.mts",
-			"import": "./dist/plugins/webpack.mjs"
+			"default": "./dist/plugins/webpack.mjs"
 		},
 		"./rspack": {
 			"types": "./dist/plugins/rspack.d.mts",
-			"import": "./dist/plugins/rspack.mjs"
+			"default": "./dist/plugins/rspack.mjs"
 		},
 		"./rsbuild": {
 			"types": "./dist/plugins/rsbuild.d.mts",
-			"import": "./dist/plugins/rsbuild.mjs"
+			"default": "./dist/plugins/rsbuild.mjs"
 		},
 		"./next": {
 			"types": "./dist/plugins/next.d.mts",
-			"import": "./dist/plugins/next.mjs"
+			"default": "./dist/plugins/next.mjs"
 		},
 		"./jest": {
 			"types": "./dist/plugins/jest.d.mts",
@@ -114,7 +117,7 @@
 	"dependencies": {
 		"@rgrove/parse-xml": "^5.0.0",
 		"@standard-schema/spec": "^1.1.0",
-		"effect": "^4.0.6",
+		"effect": "^4.0.7",
 		"jsonc-eslint-parser": "^3.3.0",
 		"jsonc-parser": "^3.3.1",
 		"toml-eslint-parser": "^1.0.3",
@@ -125,7 +128,7 @@
 		"@commitlint/cli": "^21.2.4",
 		"@commitlint/config-conventional": "^21.2.4",
 		"@effect/tsgo": "^0.59.0",
-		"@effect/vitest": "^4.0.6",
+		"@effect/vitest": "^4.0.7",
 		"@favware/cliff-jumper": "^6.1.0",
 		"@imranbarbhuiya/oxc-config": "^0.4.1",
 		"@jest/transform": "^30.5.2",

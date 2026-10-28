@@ -1,0 +1,22 @@
+{
+	"name": "example-webpack",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "webpack",
+		"start": "node dist/main.cjs",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "webpack && node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@swc/core": "^1.16.20",
+		"@types/node": "^26.6.6",
+		"swc-loader": "^0.2.7",
+		"typescript": "7.1.0-beta",
+		"webpack": "^5.112.2",
+		"webpack-cli": "^7.2.3"
+	}
+}

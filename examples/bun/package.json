@@ -1,0 +1,17 @@
+{
+	"name": "example-bun",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "bun src/main.ts",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "bun check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.4",
+		"typescript": "7.1.0-beta"
+	}
+}

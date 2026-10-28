@@ -1,0 +1,7 @@
+log_level = "warn"
+
+[server]
+idle_timeout = 30
+
+[redis]
+ttl = 3600

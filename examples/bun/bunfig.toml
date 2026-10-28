@@ -1,0 +1,4 @@
+preload = ["tyfigo/bun"]
+
+[test]
+preload = ["tyfigo/bun"]

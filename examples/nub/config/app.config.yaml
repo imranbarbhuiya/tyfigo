@@ -1,0 +1,6 @@
+name: tyfigo-nub-example
+greeting: Hello from development
+port: ${PORT:-3000}
+storage:
+  bucket: ${BUCKET}
+  region: local

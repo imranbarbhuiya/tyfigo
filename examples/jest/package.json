@@ -1,0 +1,20 @@
+{
+	"name": "example-jest",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "jest",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "jest --ci"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@jest/globals": "^30.5.2",
+		"@swc/core": "^1.16.20",
+		"@swc/jest": "^0.2.39",
+		"jest": "^30.5.2",
+		"typescript": "7.1.0-beta"
+	}
+}

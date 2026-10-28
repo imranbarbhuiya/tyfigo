@@ -1,0 +1,8 @@
+name: tyfigo-webpack-example
+http:
+  port: ${PORT:-3000}
+  cors: [http://localhost:3000]
+mail:
+  from: noreply@example.com
+  apiKey: ${MAIL_API_KEY}
+  sandbox: true

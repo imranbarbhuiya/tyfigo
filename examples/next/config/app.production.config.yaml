@@ -1,0 +1,4 @@
+site:
+  supportEmail: support@example.com
+cms:
+  revalidateSeconds: 3600

@@ -1,0 +1,29 @@
+{
+	"compilerOptions": {
+		"target": "es2024",
+		"module": "nodenext",
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		"skipLibCheck": true,
+		"types": ["node"]
+	},
+	"contentMappers": [
+		{
+			"package": "tyfigo",
+			"extensions": [
+				".config.yaml",
+				".config.yml",
+				".config.toml",
+				".config.jsonc",
+				".config.json5",
+				".config.ini",
+				".config.properties",
+				".config.xml"
+			]
+		}
+	],
+	"include": ["src", "config", "*.ts"]
+}

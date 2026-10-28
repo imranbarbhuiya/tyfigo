@@ -1,0 +1,19 @@
+{
+	"name": "example-vite",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build && vite build --ssr src/server.ts --outDir dist/server",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "vite build && vite build --ssr src/server.ts --outDir dist/server && node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.6",
+		"typescript": "7.1.0-beta",
+		"vite": "^8.3.5"
+	}
+}
