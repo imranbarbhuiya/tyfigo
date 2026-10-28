@@ -41,7 +41,7 @@ import config from '../config/app.config.yaml';
 | `[1, a]`                       | `readonly (string \| number)[]` |
 | `[]`                           | `readonly unknown[]`            |
 | `${VAR:-3000}`                 | the default's type, `number`    |
-| `${VAR}`                       | `string`                        |
+| `${VAR}`, `${VAR:?message}`    | `string`                        |
 
 Types are widened on purpose: an environment file can change `localhost` to `0.0.0.0`, so the type is `string`, not
 `'localhost'`. Use a [schema](/docs/schemas) when you want enums or literal types.

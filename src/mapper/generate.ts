@@ -61,6 +61,7 @@ export const diagnosticCodes: Readonly<Record<ProblemCode, number>> = {
 	'unknown-key': 1_008,
 	'type-mismatch': 1_009,
 	'browser-placeholder': 1_010,
+	'placeholder-type': 1_011,
 };
 
 export interface ConfigFileRole {

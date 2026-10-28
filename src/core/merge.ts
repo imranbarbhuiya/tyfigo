@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 
-import { isPlainObject } from './placeholders.ts';
+import { isPlainObject, kindOf } from './placeholders.ts';
 import { formatPath, pathKey } from './positions.ts';
 import { problemAt } from './problems.ts';
 
@@ -26,8 +26,6 @@ export interface MergeResult {
 	readonly positions: ReadonlyMap<string, LocatedSpan>;
 	readonly problems: readonly Problem[];
 }
-
-const kindOf = (value: unknown) => (value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value);
 
 const isWithin = (id: string, prefix: string) =>
 	id === prefix || id.startsWith(prefix === '[]' ? '[' : `${prefix.slice(0, -1)},`);

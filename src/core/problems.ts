@@ -9,6 +9,7 @@ export type ProblemCode =
 	| 'missing-variable'
 	| 'invalid-placeholder'
 	| 'browser-placeholder'
+	| 'placeholder-type'
 	| 'unknown-key'
 	| 'type-mismatch';
 

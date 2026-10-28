@@ -21,6 +21,7 @@ tyfigo collects every problem in a config and its layers and reports them togeth
 | `unknown-key`         | `TS2353`     | An environment or local file sets a key the base file doesn't have                         |
 | `type-mismatch`       | `TS2322`     | An environment or local file changes the kind of a value                                   |
 | `browser-placeholder` |              | A browser build imports a file with a placeholder ([Browser builds](/docs/browser-builds)) |
+| `placeholder-type`    |              | A variable doesn't read as its placeholder's type ([Placeholders](/docs/placeholders))     |
 
 In tsc, `unknown-key` and `type-mismatch` are ordinary TypeScript errors at the line in the config file. See
 [Type checking](/docs/type-checking) for real output.
@@ -40,8 +41,8 @@ The error has `_tag: 'ConfigModuleError'`, the base `file`, and the `problems` a
 
 ## In builds
 
-Bundler plugins fail the build with the same message. Server bundles leave `missing-variable` to the start of the server,
-since the variables come from where it runs.
+Bundler plugins fail the build with the same message. Server bundles leave `missing-variable` and `placeholder-type` to the
+start of the server, since the variables come from where it runs.
 
 ## Schema errors
 
