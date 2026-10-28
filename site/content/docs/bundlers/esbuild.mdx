@@ -1,0 +1,69 @@
+---
+title: esbuild and tsup
+description: Use tyfigo/esbuild with esbuild and tsup.
+---
+
+```ts title="build.ts"
+import { build } from 'esbuild';
+import tyfigo from 'tyfigo/esbuild';
+
+await build({
+	entryPoints: ['src/main.ts'],
+	outfile: 'dist/main.js',
+	bundle: true,
+	platform: 'node',
+	format: 'esm',
+	packages: 'external',
+	plugins: [tyfigo({ environment: 'production' })],
+});
+```
+
+The target follows `platform`: `node` is a server build, anything else is a [browser build](/docs/browser-builds). esbuild has
+no mode, so the environment is `NODE_ENV` unless you pass `environment`.
+
+A server build inlines the layer files that exist when it builds and reads `.env` files and environment variables from the
+working directory when the bundle starts. Secrets in `.env` stay out of `dist/main.js`.
+
+```json5 title="config/app.config.json5"
+{
+	service: 'tyfigo-esbuild-example',
+	port: '${PORT:-3000}',
+	queue: {
+		url: '${QUEUE_URL}',
+		concurrency: 2,
+	},
+	retryDelaysMs: [100, 500],
+}
+```
+
+```ts title="src/main.ts"
+import config from '../config/app.config.json5';
+
+const worker = {
+	service: config.service,
+	port: config.port,
+	concurrency: config.queue.concurrency,
+	maxDelayMs: Math.max(...config.retryDelaysMs),
+	queueHost: new URL(config.queue.url).host,
+};
+```
+
+## tsup
+
+tsup takes esbuild plugins:
+
+```ts title="tsup.config.ts"
+import { defineConfig } from 'tsup';
+import tyfigo from 'tyfigo/esbuild';
+
+export default defineConfig({
+	entry: ['src/main.ts'],
+	platform: 'node',
+	format: 'esm',
+	esbuildPlugins: [tyfigo()],
+});
+```
+
+tsup is no longer maintained and points to tsdown; see [Rollup, Rolldown and tsdown](/docs/bundlers/rollup).
+
+See the [esbuild example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/esbuild).

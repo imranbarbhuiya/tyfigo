@@ -1,0 +1,114 @@
+---
+title: Effect
+description: Load and validate config as Effects, provide it as a service, or install it as a ConfigProvider.
+icon: Atom
+---
+
+`tyfigo/effect` is the [Effect](https://effect.website) v4 API. It decodes Effect Schemas with Effect itself, so schemas that
+need services or decode asynchronously work, and it fails with a typed error instead of throwing.
+
+```ts
+import {
+	ConfigError,
+	ConfigService,
+	configProvider,
+	configProviderFromFile,
+	layerConfig,
+	layerConfigProvider,
+	layerConfigProviderFromFile,
+	layerEnv,
+	loadConfig,
+	loadEnv,
+} from 'tyfigo/effect';
+```
+
+## loadConfig and loadEnv
+
+Same arguments as the [Promise API](/docs/schemas), returning an Effect:
+
+```ts
+loadConfig(config, schema); // Effect<Output, ConfigError, Services>
+loadEnv(schema, options); //   Effect<Output, ConfigError, Services>
+```
+
+`ConfigError` is the `ConfigValidationError` class (tag `'ConfigValidationError'`), so you can recover with
+`Effect.catchTag('ConfigValidationError', …)`. Standard Schemas work too, including async ones.
+
+## ConfigService
+
+`ConfigService` defines a service class for a validated config, with a `layer` that provides it. From the
+[Effect example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/effect):
+
+```yaml title="config/app.config.yaml"
+name: tyfigo-effect-example
+logLevel: debug
+http:
+  port: ${PORT:-3000}
+database:
+  url: ${DATABASE_URL}
+  password: ${DATABASE_PASSWORD}
+jobs:
+  workers: 2
+  queues: [default]
+```
+
+```ts title="src/main.ts"
+import { Config, Console, Effect, Layer, Redacted, Schema } from 'effect';
+import { ConfigService, layerConfigProvider } from 'tyfigo/effect';
+
+import config from '../config/app.config.yaml';
+
+const AppConfigSchema = Schema.Struct({
+	name: Schema.String,
+	logLevel: Schema.Literals(['debug', 'info', 'warn', 'error']),
+	http: Schema.Struct({ port: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65_535 })) }),
+	database: Schema.Struct({ url: Schema.String, password: Schema.RedactedFromValue(Schema.String) }),
+});
+
+class AppConfig extends ConfigService<AppConfig>()('example/AppConfig', config, AppConfigSchema) {}
+
+const workers = Config.Int('workers').pipe(Config.nested('jobs'));
+const queues = Config.schema(Schema.Array(Schema.String), 'queues').pipe(Config.nested('jobs'));
+
+const program = Effect.gen(function* () {
+	const app = yield* AppConfig;
+	yield* Console.log(
+		JSON.stringify({
+			name: app.name,
+			logLevel: app.logLevel,
+			port: app.http.port,
+			database: { url: app.database.url, passwordLength: Redacted.value(app.database.password).length },
+			jobs: { workers: yield* workers, queues: yield* queues },
+		}),
+	);
+});
+
+program.pipe(Effect.provide(Layer.mergeAll(AppConfig.layer, layerConfigProvider(config))), Effect.runPromise);
+```
+
+## Layers
+
+For a service you define yourself:
+
+```ts
+layerConfig(service, config, schema); // Layer<Service, ConfigError, Services>
+layerEnv(service, schema, options); //   Layer<Service, ConfigError, Services>
+```
+
+## ConfigProvider
+
+Effect's own `Config` can read from a config file. Nested keys are path segments and array items are numeric segments, so
+`Config.Int('workers').pipe(Config.nested('jobs'))` reads `jobs.workers`. Empty strings are kept.
+
+| Function                                      | Returns                                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `configProvider(config)`                      | A `ConfigProvider` over a config import or any object                                                  |
+| `configProviderFromFile(file, options?)`      | An Effect that resolves the file with its layers, `.env` files and placeholders, then gives a provider |
+| `layerConfigProvider(config, options?)`       | A layer that installs `configProvider(config)` on top of the current provider                          |
+| `layerConfigProviderFromFile(file, options?)` | The same for `configProviderFromFile`                                                                  |
+
+The installed provider wins over the one already there (by default, the environment variables) and falls back to it for paths
+the config doesn't have. Pass `{ asPrimary: false }` to make the config fill in only what the current provider lacks.
+
+`configProviderFromFile` takes the same `environment` and `env` options as `loadEnv`, and fails with a `ConfigError` that lists
+every problem in the files.

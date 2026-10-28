@@ -1,0 +1,52 @@
+---
+title: Jest
+description: Transform config imports in Jest tests with tyfigo/jest.
+---
+
+`tyfigo/jest` is a Jest transformer. Add it for config files, and add their extensions to `moduleFileExtensions`:
+
+```js title="jest.config.js"
+/** @type {import('jest').Config} */
+export default {
+	testEnvironment: 'node',
+	moduleFileExtensions: ['ts', 'js', 'json', 'yaml', 'yml', 'toml', 'jsonc', 'json5'],
+	transform: {
+		'\\.config\\.(yaml|yml|toml|jsonc|json5)$': 'tyfigo/jest',
+		'\\.ts$': '@swc/jest',
+	},
+};
+```
+
+Add `ini`, `properties` and `xml` to both lists if you use those formats.
+
+Jest sets `NODE_ENV=test`, so `app.test.config.yaml` applies:
+
+```yaml title="config/app.test.config.yaml"
+tax:
+  rate: 0.1
+payments:
+  provider: fake
+```
+
+```ts title="src/pricing.test.ts"
+import { describe, expect, test } from '@jest/globals';
+
+import config from '../config/app.config.yaml';
+
+describe('config in Jest', () => {
+	test('merges the test environment file and .env', () => {
+		expect(config).toEqual({
+			currency: 'USD',
+			tax: { rate: 0.1, inclusive: false },
+			payments: { provider: 'fake', apiKey: 'example-only-not-a-secret', timeoutMs: 250 },
+		});
+		expect(Object.isFrozen(config)).toBe(true);
+	});
+});
+```
+
+CommonJS tests (the default) get the config resolved when Jest transforms the file. Native ESM tests
+(`NODE_OPTIONS=--experimental-vm-modules`) resolve it when the module is imported. The transformer takes `environment` and
+`runtime` options: `['tyfigo/jest', { environment: 'staging' }]`.
+
+See the [jest example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/jest).

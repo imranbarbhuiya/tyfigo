@@ -1,0 +1,76 @@
+---
+title: Vite and Vitest
+description: Use tyfigo/vite for client builds, SSR builds, the dev server and Vitest.
+---
+
+```ts title="vite.config.ts"
+import tyfigo from 'tyfigo/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [tyfigo()],
+});
+```
+
+The environment is Vite's mode: `development` for `vite`, `production` for `vite build`, `test` under Vitest, or whatever
+`--mode` says. Pass `tyfigo({ environment })` to override it.
+
+## Client and server
+
+The plugin picks the target per module environment:
+
+- **Client code** gets the base and environment files inlined, and a placeholder fails the build. See [Browser builds](/docs/browser-builds).
+- **SSR code** (`vite build --ssr`, or a server environment) inlines the layer files and reads `.env` files and environment
+  variables when the server starts. In the dev server it resolves the config from disk and watches the layer and `.env` files.
+
+The [vite example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/vite) keeps the two apart with two files:
+
+```jsonc title="config/app.config.jsonc"
+// Shipped to the browser: no placeholders, only the base and environment files are inlined.
+{
+	"title": "tyfigo + Vite",
+	"theme": "light",
+	"api": {
+		"baseUrl": "http://localhost:5173/api",
+		"retries": 1,
+	},
+}
+```
+
+```jsonc title="config/server.config.jsonc"
+// Only imported by the SSR entry, so it can read `.env` files and environment variables when the server starts.
+{
+	"port": "${PORT:-3000}",
+	"sessionSecret": "${SESSION_SECRET}",
+	"compression": false,
+}
+```
+
+```ts title="src/main.ts"
+import config from '../config/app.config.jsonc';
+
+const app = document.querySelector<HTMLElement>('#app');
+if (app) {
+	app.dataset.theme = config.theme;
+	app.textContent = `${config.title}: ${config.api.baseUrl} (${config.api.retries} retries)`;
+}
+```
+
+```ts title="src/server.ts"
+import config from '../config/server.config.jsonc';
+
+const port: number = config.port;
+```
+
+```json title="package.json"
+{
+	"scripts": {
+		"build": "vite build && vite build --ssr src/server.ts --outDir dist/server",
+		"typecheck": "tsc --noEmit --runExternalCode"
+	}
+}
+```
+
+## Vitest
+
+Vitest uses the same `vite.config.ts`, so config imports work in tests with no extra setup, and `app.test.config.*` applies.

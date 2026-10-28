@@ -1,0 +1,94 @@
+---
+title: webpack, Rspack and Rsbuild
+description: Use tyfigo/webpack, tyfigo/rspack and tyfigo/rsbuild.
+---
+
+The target follows the compiler's platform (`target: 'node…'` is a server build, `web` a [browser build](/docs/browser-builds)),
+and the environment is the compiler's `mode`.
+
+## webpack
+
+```ts title="webpack.config.ts"
+import { fileURLToPath } from 'node:url';
+
+import tyfigo from 'tyfigo/webpack';
+
+import type { Configuration } from 'webpack';
+
+export default {
+	mode: 'production',
+	target: 'node24',
+	entry: './src/main.ts',
+	output: {
+		path: fileURLToPath(new URL('dist', import.meta.url)),
+		filename: 'main.cjs',
+	},
+	resolve: { extensions: ['.ts', '.js'] },
+	module: {
+		rules: [{ test: /\.ts$/, exclude: /node_modules/, loader: 'swc-loader' }],
+	},
+	externals: { 'tyfigo/runtime': 'import tyfigo/runtime' },
+	plugins: [tyfigo()],
+} satisfies Configuration;
+```
+
+A server bundle imports `tyfigo/runtime` to read `.env` files and environment variables when it starts. The `externals` entry
+loads it from the installed package with a dynamic `import()`, which also works from a CommonJS bundle.
+
+## Rspack
+
+One config can build both sides. From the [rspack example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/rspack):
+
+```ts title="rspack.config.ts"
+import { fileURLToPath } from 'node:url';
+
+import { defineConfig } from '@rspack/cli';
+import tyfigo from 'tyfigo/rspack';
+
+import type { Configuration } from '@rspack/core';
+
+const shared = {
+	mode: 'production',
+	resolve: { extensions: ['.ts', '.js'] },
+	module: {
+		rules: [
+			{
+				test: /\.ts$/,
+				loader: 'builtin:swc-loader',
+				options: { jsc: { parser: { syntax: 'typescript' } } },
+				type: 'javascript/auto',
+			},
+		],
+	},
+	plugins: [tyfigo()],
+} satisfies Configuration;
+
+export default defineConfig([
+	{
+		...shared,
+		name: 'client',
+		target: 'web',
+		entry: './src/client.ts',
+		output: { path: fileURLToPath(new URL('dist/client', import.meta.url)), filename: 'client.js' },
+	},
+	{
+		...shared,
+		name: 'server',
+		target: 'node24',
+		entry: './src/server.ts',
+		output: { path: fileURLToPath(new URL('dist/server', import.meta.url)), filename: 'server.cjs' },
+		externals: { 'tyfigo/runtime': 'import tyfigo/runtime' },
+	},
+]);
+```
+
+## Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core';
+import tyfigo from 'tyfigo/rsbuild';
+
+export default defineConfig({
+	plugins: [tyfigo()],
+});
+```

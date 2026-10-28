@@ -1,0 +1,59 @@
+---
+title: Errors
+description: Every problem tyfigo reports, where it is reported and what the error looks like.
+icon: TriangleAlert
+---
+
+tyfigo collects every problem in a config and its layers and reports them together, each as
+`file:line:column - message (code)`.
+
+## Problem codes
+
+| Code                  | tsc          | Meaning                                                                                    |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `parse-error`         | `tyfigo1001` | The file is not valid for its format                                                       |
+| `duplicate-key`       | `tyfigo1002` | A key appears twice                                                                        |
+| `file-not-found`      |              | The imported config file doesn't exist                                                     |
+| `read-error`          |              | A config or `.env` file exists but can't be read                                           |
+| `unsupported-file`    | `tyfigo1005` | The file name doesn't end in a suffix tyfigo handles                                       |
+| `missing-variable`    |              | A `${VAR}` or `${VAR:?message}` placeholder has no value                                   |
+| `invalid-placeholder` | `tyfigo1007` | A placeholder such as `${1PORT}` or an unclosed `${PORT`                                   |
+| `unknown-key`         | `TS2353`     | An environment or local file sets a key the base file doesn't have                         |
+| `type-mismatch`       | `TS2322`     | An environment or local file changes the kind of a value                                   |
+| `browser-placeholder` |              | A browser build imports a file with a placeholder ([Browser builds](/docs/browser-builds)) |
+
+In tsc, `unknown-key` and `type-mismatch` are ordinary TypeScript errors at the line in the config file. See
+[Type checking](/docs/type-checking) for real output.
+
+## At run time
+
+A config import that has problems throws when it is evaluated, and the import fails:
+
+```txt
+ConfigModuleError: Invalid config /srv/app/config/app.config.yaml
+/srv/app/config/app.production.config.yaml:3:3 - 'server.hostname' is not in app.config.yaml; environment and local files can only override existing keys (unknown-key)
+/srv/app/config/app.production.config.yaml:4:11 - Expected array at 'features' as in app.config.yaml, got number (type-mismatch)
+```
+
+The error has `_tag: 'ConfigModuleError'`, the base `file`, and the `problems` array, each with `file`, `line`, `column`,
+`message` and `code`.
+
+## In builds
+
+Bundler plugins fail the build with the same message. Server bundles leave `missing-variable` to the start of the server,
+since the variables come from where it runs.
+
+## Schema errors
+
+`loadConfig` and `loadEnv` throw (and the Effect versions fail with) a
+[`ConfigValidationError`](/docs/schemas#configvalidationerror):
+
+```txt
+Invalid config /srv/app/config/app.config.yaml:
+  /srv/app/config/app.config.yaml:2:9 - server.port: Too small: expected number to be >=1
+```
+
+## Async schemas
+
+`loadConfig` and `loadEnv` throw a `TypeError` naming `loadConfigAsync` and `loadEnvAsync` when the schema validates
+asynchronously.

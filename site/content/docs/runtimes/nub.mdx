@@ -1,0 +1,30 @@
+---
+title: nub
+description: Preload tyfigo/register in nub.jsonc.
+---
+
+[nub](https://github.com/nubjs/nub) runs on Node's module hooks, so tyfigo's Node hook works as a preload:
+
+```jsonc title="nub.jsonc"
+{
+	"preload": ["tyfigo/register"],
+}
+```
+
+```json title="package.json"
+{
+	"scripts": {
+		"start": "nub src/main.ts",
+		"typecheck": "tsc --noEmit --runExternalCode"
+	}
+}
+```
+
+```ts title="src/main.ts"
+import config from '../config/app.config.yaml';
+
+const bucketUrl = `s3://${config.storage.bucket}?region=${config.storage.region}`;
+```
+
+Everything else works as on [Node](/docs/runtimes/node). See the
+[nub example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/nub).

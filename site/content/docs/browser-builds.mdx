@@ -1,0 +1,62 @@
+---
+title: Browser builds
+description: What ends up in a client bundle, and why placeholders fail the build.
+icon: Globe
+---
+
+A browser bundle is public, and it can't read `.env` files or environment variables when it runs. So when a config file is
+imported from client code, tyfigo:
+
+1. Inlines the **base and environment files** only, merged at build time. Local files (`app.local.config.*`) are left out.
+2. **Fails the build** on any `${…}` placeholder in those files, so a secret can't be inlined by accident.
+
+```txt
+Invalid config /srv/app/config/bad.config.yaml
+/srv/app/config/bad.config.yaml:1:6 - 'url' uses an environment placeholder, which browser builds cannot read (browser-placeholder)
+```
+
+A literal `$${` is allowed.
+
+## Which builds are browser builds
+
+| Tool                     | Browser target                             |
+| ------------------------ | ------------------------------------------ |
+| Vite                     | Client environment (not SSR)               |
+| Next.js                  | Client components and Edge code            |
+| webpack, Rspack, Rsbuild | A `web` target                             |
+| esbuild, tsup            | Any `platform` other than `node`           |
+| Rolldown, tsdown         | Any `platform` other than `node`           |
+| Rollup                   | Always, unless you pass `target: 'server'` |
+| `Bun.build`              | `target: 'browser'`                        |
+
+Every plugin takes `target: 'browser' | 'server'` to override the detected one (except Next.js, which decides per layer).
+
+## Split client and server config
+
+Keep values the browser may see in one file and server-only values in another. From the
+[rspack example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/rspack):
+
+```yaml title="config/app.config.yaml"
+title: tyfigo + Rspack
+analytics:
+  enabled: false
+  sampleRate: 1
+links:
+  docs: http://localhost:3000/docs
+```
+
+```yaml title="config/server.config.yaml"
+port: ${PORT:-3000}
+cache:
+  url: ${CACHE_URL}
+  maxEntries: 100
+```
+
+`src/client.ts` imports `app.config.yaml`, and `src/server.ts` imports `server.config.yaml`. The client bundle contains the
+production values of `app.config.yaml` and nothing from `.env`.
+
+## Server bundles
+
+A server bundle inlines the text of every layer file that exists when it builds, including local files, and resolves
+placeholders when it starts, reading `.env` files from the working directory and the environment of the process. A missing
+variable is not a build error; it fails when the server starts. Paths of the build machine are not baked in.

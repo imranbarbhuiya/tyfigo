@@ -102,3 +102,28 @@ jobs:
       - name: Check
         working-directory: examples/${{ matrix.example }}
         run: bun run check
+
+  Site:
+    name: Site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v7.0.1
+      - name: Add problem matcher
+        run: echo "::add-matcher::.github/problemMatchers/tsc.json"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+      - name: Use Node.js v24
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      - name: Build tyfigo
+        run: bun run build
+      - name: Build site
+        run: bun run --cwd site build
+      - name: Typecheck site
+        run: bun run --cwd site typecheck --pretty false
