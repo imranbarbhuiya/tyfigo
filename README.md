@@ -36,6 +36,8 @@ npm i -D typescript@7.1.0-beta
 		"strict": true,
 		"noEmit": true,
 		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"types": ["node"],
 	},
 	"contentMappers": [
 		{
@@ -66,7 +68,7 @@ npm i -D typescript@7.1.0-beta
 }
 ```
 
-Including `config` makes tsc check environment and local files even when no code imports them directly.
+Including `config` makes tsc check environment and local files even when no code imports them directly. TypeScript 7 defaults `types` to `[]`, so list `node` (or `bun`) yourself. `skipLibCheck` keeps tsc from checking the bundler types that the plugin declarations reference, which you only have installed for the bundler you use.
 
 ## Example
 
@@ -113,11 +115,14 @@ The type of `config` comes from the base file, widened so other environments can
 and `tsc --noEmit --runExternalCode` reports each mistake at its line in the YAML or the code:
 
 ```txt
-config/app.production.config.yaml(3,3): error TS2353: Object literal may only specify known properties, and 'hostname' does not exist in type '{ readonly host?: string | undefined; readonly port?: number | undefined; }'.
-config/app.production.config.yaml(6,5): error TS2322: Type 'string' is not assignable to type 'number'.
+config/app.production.config.yaml(3,5): error TS2353: Object literal may only specify known properties, and 'hostname' does not exist in type '{ readonly host?: string | undefined; readonly port?: number | undefined; }'.
+config/app.production.config.yaml(6,9): error TS2322: Type 'string' is not assignable to type 'number'.
 config/app.production.config.yaml(7,20): error TS2322: Type 'number' is not assignable to type 'string'.
 src/main.ts(3,7): error TS2322: Type 'number' is not assignable to type 'string'.
 ```
+
+`database.url` has no default, so set `DATABASE_URL` (in `.env` or the environment) before you run the example. Without it, the import fails
+with `Environment variable 'DATABASE_URL' is not set (missing-variable)`.
 
 Layers are read in this order, each one winning over the last: `app.config.yaml`, `app.<env>.config.yaml`,
 `app.local.config.yaml`, `app.<env>.local.config.yaml`. The environment is `NODE_ENV` unless you pass `environment`.
@@ -167,11 +172,14 @@ const env = loadEnv(z.object({ NODE_ENV: z.enum(['development', 'production', 't
 | Rspack and Rsbuild           | `plugins: [tyfigo()]` from `tyfigo/rspack` or `tyfigo/rsbuild`                                       | [rspack](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/rspack)   |
 | Jest                         | `'tyfigo/jest'` as the `transform` for config files, with their extensions in `moduleFileExtensions` | [jest](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/jest)       |
 
-Browser builds get the base and environment files inlined, and a `${VAR}` placeholder in a client bundle fails the build.
-Server bundles inline the layer files and read `.env` files and environment variables when they start. See
+Browser builds get the base and environment files inlined, and a `${VAR}` placeholder or an import of `loadEnv` in a client bundle
+fails the build. Server bundles fix the environment when they build: they inline the base, environment and local files, ignore
+`NODE_ENV` at run time for picking layers, and read `.env` files and environment variables when they start. See
 [Browser builds](https://tyfigo.vercel.app/docs/browser-builds).
 
 ## Formats
+
+tyfigo reads seven formats under eight suffixes, since YAML takes both `.config.yaml` and `.config.yml`.
 
 | Suffix                        | Format        |
 | ----------------------------- | ------------- |

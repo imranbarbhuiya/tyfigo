@@ -2,10 +2,11 @@
 All notable changes to this project will be documented in this file.
 
 # [0.1.0]
-(https://github.com/imranbarbhuiya/tyfigo/tree/v0.1.0) - (2026-10-28)
+(https://github.com/imranbarbhuiya/tyfigo/tree/v0.1.0) - (2026-10-29)
 
 ## 🐛 Bug Fixes
 
+- Release fixes for browser builds, packaging and docs (#15) ([ffecb89](https://github.com/imranbarbhuiya/tyfigo/commit/ffecb8925f7c739ef0d07ac894e294de80888f62))
 - Type whole-value placeholders as they resolve (#13) ([80376eb](https://github.com/imranbarbhuiya/tyfigo/commit/80376eb1530df4477e3d025b1c2fc5c0e70aeafc))
 
 ## 🚀 Features
