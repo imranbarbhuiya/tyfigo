@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { badValue, fixture, merged, run } from './spawn.ts';
+import { badValue, fixture, formatsFixture, formatsMerged, merged, run } from './spawn.ts';
 
 import { makeProject } from '../helpers.ts';
 
@@ -40,6 +40,13 @@ describe('bun --preload tyfigo/bun', () => {
 		const result = run('bun', ['--preload', preload, 'plain.ts'], root);
 		expect(result.stderr).toBe('');
 		expect(JSON.parse(result.stdout)).toEqual({ data: { plain: true }, toml: { value: '${NOT_A_PLACEHOLDER}' } });
+	});
+
+	it('imports INI, .properties and XML config files with their layers', async () => {
+		const root = await makeProject(formatsFixture);
+		const result = run('bun', ['--preload', preload, 'formats.ts'], root);
+		expect(result.stderr).toBe('');
+		expect(JSON.parse(result.stdout)).toEqual(formatsMerged);
 	});
 
 	it('fails with the file, line and column of a bad value', async () => {

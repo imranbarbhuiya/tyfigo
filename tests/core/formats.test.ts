@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { json5, jsonc, parseConfigFileName, toml, yaml } from '../../src/core/formats/index.ts';
+import { ini, json5, jsonc, parseConfigFileName, properties, toml, xml, yaml } from '../../src/core/formats/index.ts';
 import { spanText } from '../helpers.ts';
 
 describe('yaml', () => {
@@ -283,6 +283,273 @@ describe('json5', () => {
 	});
 });
 
+describe('ini', () => {
+	const text = [
+		'; comment',
+		'name = héllo ✓',
+		'port = 3000',
+		'',
+		'[db]',
+		'url = "postgres://x" ; inline',
+		"quoted = '3000'",
+		'version = 1.50',
+		'empty =',
+		'link = http://x/#frag',
+		'',
+		'[server.http]',
+		'hosts[] = a',
+		'hosts[] = 😀 b',
+		'debug = false',
+		'',
+	].join('\n');
+
+	it('parses the value', () => {
+		const result = ini.parse(text);
+		expect(result.problems).toEqual([]);
+		expect(result.value).toEqual({
+			name: 'héllo ✓',
+			port: 3_000,
+			db: { url: 'postgres://x', quoted: '3000', version: '1.50', empty: '', link: 'http://x/#frag' },
+			server: { http: { hosts: ['a', '😀 b'], debug: false } },
+		});
+	});
+
+	it('maps every key and value in UTF-8 bytes', () => {
+		const { positions } = ini.parse(text);
+		expect(spanText(text, positions, ['name'])).toEqual({ key: 'name', value: 'héllo ✓' });
+		expect(spanText(text, positions, ['port'])).toEqual({ key: 'port', value: '3000' });
+		expect(spanText(text, positions, ['db'])).toEqual({
+			key: 'db',
+			value: [
+				'[db]',
+				'url = "postgres://x" ; inline',
+				"quoted = '3000'",
+				'version = 1.50',
+				'empty =',
+				'link = http://x/#frag',
+			].join('\n'),
+		});
+		expect(spanText(text, positions, ['db', 'url'])).toEqual({ key: 'url', value: '"postgres://x"' });
+		expect(spanText(text, positions, ['db', 'quoted'])).toEqual({ key: 'quoted', value: "'3000'" });
+		expect(spanText(text, positions, ['db', 'empty'])).toEqual({ key: 'empty', value: '' });
+		expect(spanText(text, positions, ['server']).key).toBe('server');
+		expect(spanText(text, positions, ['server', 'http'])).toEqual({
+			key: 'http',
+			value: '[server.http]\nhosts[] = a\nhosts[] = 😀 b\ndebug = false',
+		});
+		expect(spanText(text, positions, ['server', 'http', 'hosts'])).toEqual({
+			key: 'hosts',
+			value: 'a\nhosts[] = 😀 b',
+		});
+		expect(spanText(text, positions, ['server', 'http', 'hosts', 1])).toEqual({ key: '😀 b', value: '😀 b' });
+		expect(spanText(text, positions, ['server', 'http', 'debug'])).toEqual({ key: 'debug', value: 'false' });
+		expect(positions.has('[]')).toBe(true);
+	});
+
+	it('reports parse errors with line and column', () => {
+		const result = ini.parse('a = 1\n[db\nb = 2\n', 'bad.config.ini');
+		expect(result.value).toBeUndefined();
+		expect(result.problems).toEqual([
+			expect.objectContaining({ file: 'bad.config.ini', code: 'parse-error', line: 2, column: 1 }),
+		]);
+		expect(ini.parse('a = 1\njust a line\n').problems[0]).toMatchObject({ code: 'parse-error', line: 2 });
+		expect(ini.parse('a = "x\n').problems[0]).toMatchObject({ message: 'Unterminated string', line: 1, column: 5 });
+		expect(ini.parse('[a..b]\n').problems[0]).toMatchObject({ code: 'parse-error', line: 1 });
+	});
+
+	it('reports duplicate keys and a section that clashes with a value', () => {
+		expect(ini.parse('a = 1\na = 2\n')).toMatchObject({
+			value: { a: 2 },
+			problems: [{ code: 'duplicate-key', line: 2, column: 1 }],
+		});
+		expect(ini.parse('db = 1\n[db]\nx = 1\n').problems[0]).toMatchObject({
+			code: 'duplicate-key',
+			line: 2,
+			column: 2,
+		});
+	});
+
+	it('merges a repeated section', () => {
+		expect(ini.parse('[a]\nx = 1\n[b]\n[a]\ny = 2\n').value).toEqual({ a: { x: 1, y: 2 }, b: {} });
+	});
+
+	it('reads an empty file as an empty object', () => {
+		expect(ini.parse('; nothing\n')).toMatchObject({ value: {}, problems: [] });
+	});
+
+	it('reads whole-value placeholders with the INI scalar rule', () => {
+		expect(ini.parseScalar('8080')).toBe(8_080);
+		expect(ini.parseScalar('-1.5')).toBe(-1.5);
+		expect(ini.parseScalar('true')).toBe(true);
+		expect(ini.parseScalar('08080')).toBe('08080');
+		expect(ini.parseScalar('1e3')).toBe('1e3');
+		expect(ini.parseScalar('9007199254740993')).toBe('9007199254740993');
+		expect(ini.parseScalar('NaN')).toBe('NaN');
+		expect(ini.parseScalar('TRUE')).toBe('TRUE');
+		expect(ini.parseScalar('')).toBe('');
+	});
+});
+
+describe('properties', () => {
+	const text = [
+		'# comment',
+		'! also a comment',
+		'name = héllo ✓',
+		'port=3000',
+		'db.url: postgres://x',
+		'db.pool 5',
+		'message = hello \\',
+		'    world',
+		'unicode = \\u00e9\\t😀',
+		'dotted\\.key = 1.50',
+		'empty =',
+		'',
+	].join('\n');
+
+	it('parses the value', () => {
+		const result = properties.parse(text);
+		expect(result.problems).toEqual([]);
+		expect(result.value).toEqual({
+			name: 'héllo ✓',
+			port: 3_000,
+			db: { url: 'postgres://x', pool: 5 },
+			message: 'hello world',
+			unicode: 'é\t😀',
+			'dotted.key': '1.50',
+			empty: '',
+		});
+	});
+
+	it('maps every key and value in UTF-8 bytes', () => {
+		const { positions } = properties.parse(text);
+		expect(spanText(text, positions, ['name'])).toEqual({ key: 'name', value: 'héllo ✓' });
+		expect(spanText(text, positions, ['port'])).toEqual({ key: 'port', value: '3000' });
+		expect(spanText(text, positions, ['db'])).toEqual({ key: 'db', value: 'db.url: postgres://x' });
+		expect(spanText(text, positions, ['db', 'url'])).toEqual({ key: 'url', value: 'postgres://x' });
+		expect(spanText(text, positions, ['db', 'pool'])).toEqual({ key: 'pool', value: '5' });
+		expect(spanText(text, positions, ['message'])).toEqual({ key: 'message', value: 'hello \\\n    world' });
+		expect(spanText(text, positions, ['unicode'])).toEqual({ key: 'unicode', value: '\\u00e9\\t😀' });
+		expect(spanText(text, positions, ['dotted.key'])).toEqual({ key: 'dotted\\.key', value: '1.50' });
+		expect(spanText(text, positions, ['empty']).key).toBe('empty');
+		expect(positions.has('[]')).toBe(true);
+	});
+
+	it('reports parse errors with line and column', () => {
+		const result = properties.parse('a = 1\nb = \\u12x4\n', 'bad.config.properties');
+		expect(result.value).toBeUndefined();
+		expect(result.problems).toEqual([
+			expect.objectContaining({ file: 'bad.config.properties', code: 'parse-error', line: 2, column: 5 }),
+		]);
+	});
+
+	it('reports duplicate keys and a key that is both a value and a group', () => {
+		expect(properties.parse('a = 1\na = 2\n')).toMatchObject({
+			value: { a: 2 },
+			problems: [{ code: 'duplicate-key', line: 2, column: 1 }],
+		});
+		expect(properties.parse('a = 1\na.b = 2\n')).toMatchObject({
+			value: { a: 1 },
+			problems: [{ code: 'duplicate-key', message: "'a' is already a value", line: 2, column: 1 }],
+		});
+	});
+
+	it('keeps keys with empty parts flat', () => {
+		expect(properties.parse('a..b = 1\n.c = 2\n').value).toEqual({ 'a..b': 1, '.c': 2 });
+	});
+
+	it('reads an empty file as an empty object', () => {
+		expect(properties.parse('# nothing\n')).toMatchObject({ value: {}, problems: [] });
+	});
+
+	it('reads whole-value placeholders with the same scalar rule', () => {
+		expect(properties.parseScalar('8080')).toBe(8_080);
+		expect(properties.parseScalar('false')).toBe(false);
+		expect(properties.parseScalar('localhost')).toBe('localhost');
+	});
+});
+
+describe('xml', () => {
+	const text = [
+		'<?xml version="1.0"?>',
+		'<!-- comment -->',
+		'<config env="prod" debug="true">',
+		'  <name>héllo ✓</name>',
+		'  <port>3000</port>',
+		'  <version>1.50</version>',
+		'  <empty/>',
+		'  <db url="postgres://x" pool="5"/>',
+		'  <tags><tag>a</tag><tag>😀 b</tag></tags>',
+		'  <server host="a">text &amp; more</server>',
+		'  <raw><![CDATA[<x>]]></raw>',
+		'</config>',
+		'',
+	].join('\n');
+
+	it('parses the value', () => {
+		const result = xml.parse(text);
+		expect(result.problems).toEqual([]);
+		expect(result.value).toEqual({
+			config: {
+				'@env': 'prod',
+				'@debug': true,
+				name: 'héllo ✓',
+				port: 3_000,
+				version: '1.50',
+				empty: '',
+				db: { '@url': 'postgres://x', '@pool': 5 },
+				tags: { tag: ['a', '😀 b'] },
+				server: { '@host': 'a', '#text': 'text & more' },
+				raw: '<x>',
+			},
+		});
+	});
+
+	it('maps every key and value in UTF-8 bytes', () => {
+		const { positions } = xml.parse(text);
+		expect(spanText(text, positions, ['config']).key).toBe('config');
+		expect(spanText(text, positions, ['config']).value).toMatch(/^<config env="prod"[\s\S]*<\/config>$/u);
+		expect(spanText(text, positions, ['config', '@env'])).toEqual({ key: 'env', value: '"prod"' });
+		expect(spanText(text, positions, ['config', 'name'])).toEqual({ key: 'name', value: 'héllo ✓' });
+		expect(spanText(text, positions, ['config', 'port'])).toEqual({ key: 'port', value: '3000' });
+		expect(spanText(text, positions, ['config', 'empty'])).toEqual({ key: 'empty', value: '<empty/>' });
+		expect(spanText(text, positions, ['config', 'db', '@pool'])).toEqual({ key: 'pool', value: '"5"' });
+		expect(spanText(text, positions, ['config', 'tags', 'tag'])).toEqual({
+			key: 'tag',
+			value: '<tag>a</tag><tag>😀 b</tag>',
+		});
+		expect(spanText(text, positions, ['config', 'tags', 'tag', 1])).toEqual({ key: 'tag', value: '😀 b' });
+		expect(spanText(text, positions, ['config', 'server', '#text'])).toEqual({
+			key: 'text &amp; more',
+			value: 'text &amp; more',
+		});
+		expect(spanText(text, positions, ['config', 'raw'])).toEqual({ key: 'raw', value: '<![CDATA[<x>]]>' });
+		expect(positions.has('[]')).toBe(true);
+	});
+
+	it('reports parse errors with line and column', () => {
+		const result = xml.parse('<a>\n  <b>1</c>\n</a>\n', 'bad.config.xml');
+		expect(result.value).toBeUndefined();
+		expect(result.problems).toEqual([
+			expect.objectContaining({ file: 'bad.config.xml', code: 'parse-error', line: 2, column: 7 }),
+		]);
+		expect(result.problems[0]?.message).not.toContain('\n');
+	});
+
+	it('reports a duplicate attribute', () => {
+		expect(xml.parse('<a x="1" x="2"/>').problems[0]).toMatchObject({ code: 'parse-error', line: 1, column: 15 });
+	});
+
+	it('reads an empty file as an empty object', () => {
+		expect(xml.parse('<?xml version="1.0"?>\n<!-- nothing -->\n')).toMatchObject({ value: {}, problems: [] });
+	});
+
+	it('reads whole-value placeholders with the same scalar rule', () => {
+		expect(xml.parseScalar('8080')).toBe(8_080);
+		expect(xml.parseScalar('true')).toBe(true);
+		expect(xml.parseScalar('<x/>')).toBe('<x/>');
+	});
+});
+
 describe('parseConfigFileName', () => {
 	it('claims only *.config.<ext>', () => {
 		expect(parseConfigFileName('app.config.yaml')).toMatchObject({ stem: 'app', suffix: '.config.yaml' });
@@ -293,6 +560,10 @@ describe('parseConfigFileName', () => {
 		expect(parseConfigFileName('app.config.toml')?.format.name).toBe('toml');
 		expect(parseConfigFileName('app.config.jsonc')?.format.name).toBe('jsonc');
 		expect(parseConfigFileName('app.config.json5')?.format.name).toBe('json5');
+		expect(parseConfigFileName('app.config.ini')?.format.name).toBe('ini');
+		expect(parseConfigFileName('app.config.properties')?.format.name).toBe('properties');
+		expect(parseConfigFileName('app.config.xml')?.format.name).toBe('xml');
+		expect(parseConfigFileName('app.xml')).toBeUndefined();
 		expect(parseConfigFileName('app.yaml')).toBeUndefined();
 		expect(parseConfigFileName('.config.yaml')).toBeUndefined();
 		expect(parseConfigFileName('app.config.json')).toBeUndefined();

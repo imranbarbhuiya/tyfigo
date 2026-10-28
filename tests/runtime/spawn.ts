@@ -43,3 +43,27 @@ export const merged = {
 
 export const badValue =
 	/config\/bad\.production\.config\.yaml:1:7 - Expected number at 'port' as in bad\.config\.yaml, got string \(type-mismatch\)/;
+
+export const formatsFixture = {
+	'package.json': '{ "type": "module" }',
+	'.env': 'PORT=8080\n',
+	'config/server.config.ini': 'port = ${PORT:-3000}\n\n[db]\nhosts[] = a\nhosts[] = b\n',
+	'config/server.production.config.ini': '[db]\nhosts[] = prod\n',
+	'config/jvm.config.properties': 'heap.max = 512\nheap.gc = g1\n',
+	'config/jvm.production.config.properties': 'heap.max = 1024\n',
+	'config/site.config.xml': '<site lang="en"><debug>true</debug><page>a</page><page>b</page></site>\n',
+	'config/site.production.config.xml': '<site><debug>false</debug></site>\n',
+	'formats.ts': [
+		"import server from './config/server.config.ini';",
+		"import jvm from './config/jvm.config.properties';",
+		"import site from './config/site.config.xml';",
+		'console.log(JSON.stringify({ server, jvm, site }));',
+		'',
+	].join('\n'),
+};
+
+export const formatsMerged = {
+	server: { port: 8_080, db: { hosts: ['prod'] } },
+	jvm: { heap: { max: 1_024, gc: 'g1' } },
+	site: { site: { '@lang': 'en', debug: false, page: ['a', 'b'] } },
+};

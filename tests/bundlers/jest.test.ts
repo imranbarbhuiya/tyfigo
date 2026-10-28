@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { fixtureFiles, useRuntime } from './helpers.ts';
 
+import { configFilePattern } from '../../src/plugins/shared.ts';
 import { makeProject } from '../helpers.ts';
 
 const runtime = useRuntime();
@@ -24,10 +25,7 @@ const jestConfig = (esm = false) =>
 		testMatch: ['**/*.test.{cjs,mjs}'],
 		moduleFileExtensions: ['js', 'cjs', 'mjs', 'json', 'yaml'],
 		transform: {
-			[String.raw`\.config\.(yaml|yml|toml|jsonc|json5)$`]: [
-				transformer,
-				{ environment: 'production', runtime: runtime.path },
-			],
+			[configFilePattern.source]: [transformer, { environment: 'production', runtime: runtime.path }],
 		},
 	});
 

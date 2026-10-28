@@ -1,5 +1,42 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`ini > generates the base module 1`] = `
+"declare const config: {
+	readonly name: string;
+	readonly port: number;
+	readonly tags: readonly string[];
+	readonly db: {
+		readonly url: string;
+	};
+};
+export default config;
+"
+`;
+
+exports[`ini > generates the environment module 1`] = `
+"import type Base from "./app.config.ini";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ port: "3000" }) satisfies Override<Config>;
+({ tags: ["c"] }) satisfies Override<Config>;
+({ db: {} }) satisfies Override<Config>;
+({ url: "y" }) satisfies Override<At<Config, "db">>;
+({ size: 1 }) satisfies Override<At<Config, "db">>;
+
+declare const config: Config;
+export default config;
+"
+`;
+
 exports[`json5 > generates the base module 1`] = `
 "declare const config: {
 	readonly name: string;
@@ -67,6 +104,40 @@ export default config;
 "
 `;
 
+exports[`properties > generates the base module 1`] = `
+"declare const config: {
+	readonly name: string;
+	readonly port: number;
+	readonly db: {
+		readonly url: string;
+	};
+};
+export default config;
+"
+`;
+
+exports[`properties > generates the environment module 1`] = `
+"import type Base from "./app.config.properties";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ port: "abc" }) satisfies Override<Config>;
+({ db: {} }) satisfies Override<Config>;
+({ host: "x" }) satisfies Override<At<Config, "db">>;
+
+declare const config: Config;
+export default config;
+"
+`;
+
 exports[`toml > generates the base module 1`] = `
 "declare const config: {
 	readonly name: string;
@@ -103,6 +174,23 @@ export default config;
 "
 `;
 
+exports[`type checking > maps errors in ini environment files to their keys and values 1`] = `
+[
+  {
+    "at": "port",
+    "file": "app.production.ts",
+    "line": 1,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": "size",
+    "file": "app.production.ts",
+    "line": 6,
+    "message": "TS2353: Object literal may only specify known properties, and 'size' does not exist in type '{ readonly url?: string; }'.",
+  },
+]
+`;
+
 exports[`type checking > maps errors in json5 environment files to their keys and values 1`] = `
 [
   {
@@ -131,6 +219,23 @@ exports[`type checking > maps errors in jsonc environment files to their keys an
 ]
 `;
 
+exports[`type checking > maps errors in properties environment files to their keys and values 1`] = `
+[
+  {
+    "at": "port",
+    "file": "app.production.ts",
+    "line": 1,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": "host",
+    "file": "app.production.ts",
+    "line": 2,
+    "message": "TS2353: Object literal may only specify known properties, and 'host' does not exist in type '{ readonly url?: string; }'.",
+  },
+]
+`;
+
 exports[`type checking > maps errors in toml environment files to their keys and values 1`] = `
 [
   {
@@ -144,6 +249,23 @@ exports[`type checking > maps errors in toml environment files to their keys and
     "file": "app.production.ts",
     "line": 5,
     "message": "TS2353: Object literal may only specify known properties, and 'size' does not exist in type '{ readonly url?: string; }'.",
+  },
+]
+`;
+
+exports[`type checking > maps errors in xml environment files to their keys and values 1`] = `
+[
+  {
+    "at": "port",
+    "file": "app.production.ts",
+    "line": 2,
+    "message": "TS2322: Type 'string' is not assignable to type 'number'.",
+  },
+  {
+    "at": "host",
+    "file": "app.production.ts",
+    "line": 3,
+    "message": "TS2353: Object literal may only specify known properties, and '"@host"' does not exist in type '{ readonly "@url"?: string; }'.",
   },
 ]
 `;
@@ -181,6 +303,45 @@ exports[`type checking > maps errors in yaml environment files to their keys and
     "message": "TS2322: Type 'number' is not assignable to type 'string'.",
   },
 ]
+`;
+
+exports[`xml > generates the base module 1`] = `
+"declare const config: {
+	readonly app: {
+		readonly "@env": string;
+		readonly name: string;
+		readonly port: number;
+		readonly db: {
+			readonly "@url": string;
+		};
+	};
+};
+export default config;
+"
+`;
+
+exports[`xml > generates the environment module 1`] = `
+"import type Base from "./app.config.xml";
+
+type Config = typeof Base;
+type Override<T> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? [keyof T] extends [never]
+			? { readonly [key: string]: never }
+			: { readonly [K in keyof T]?: Override<T[K]> }
+		: T;
+type At<T, K> = T extends object ? (K extends keyof T ? T[K] : any) : any;
+
+({ app: {} }) satisfies Override<Config>;
+({ "@env": "prod" }) satisfies Override<At<Config, "app">>;
+({ port: "abc" }) satisfies Override<At<Config, "app">>;
+({ db: {} }) satisfies Override<At<Config, "app">>;
+({ "@host": "x" }) satisfies Override<At<At<Config, "app">, "db">>;
+
+declare const config: Config;
+export default config;
+"
 `;
 
 exports[`yaml > generates the base module 1`] = `

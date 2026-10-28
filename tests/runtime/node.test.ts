@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { badValue, fixture, merged, run } from './spawn.ts';
+import { badValue, fixture, formatsFixture, formatsMerged, merged, run } from './spawn.ts';
 
 import { makeProject } from '../helpers.ts';
 
@@ -39,6 +39,13 @@ describe('node --import tyfigo/register', () => {
 		const result = run('node', ['--import', register, 'plain.ts'], root);
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('ERR_UNKNOWN_FILE_EXTENSION');
+	});
+
+	it('imports INI, .properties and XML config files with their layers', async () => {
+		const root = await makeProject(formatsFixture);
+		const result = run('node', ['--import', register, 'formats.ts'], root);
+		expect(result.stderr).toBe('');
+		expect(JSON.parse(result.stdout)).toEqual(formatsMerged);
 	});
 
 	it('fails with the file, line and column of a bad value', async () => {
