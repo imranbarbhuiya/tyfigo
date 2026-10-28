@@ -15,7 +15,16 @@ export default defineConfig({
 	rules: {
 		'mahir-effect/no-run-outside-edge': [
 			2,
-			{ allow: ['src/index.ts', 'src/core/sync.ts', 'src/runtime/load.ts', '**/*.test.ts', '**/scripts/**'] },
+			{
+				allow: [
+					'src/index.ts',
+					'src/index.browser.ts',
+					'src/core/sync.ts',
+					'src/runtime/load.ts',
+					'**/*.test.ts',
+					'**/scripts/**',
+				],
+			},
 		],
 	},
 	overrides: [
@@ -24,7 +33,7 @@ export default defineConfig({
 			rules: { 'node-js/no-process-env': 0 },
 		},
 		{
-			files: ['src/core/**', 'src/runtime/**', 'src/plugins/**', 'src/index.ts'],
+			files: ['src/core/**', 'src/runtime/**', 'src/plugins/**', 'src/index.ts', 'src/index.browser.ts'],
 			rules: { 'node/no-sync': 0 },
 		},
 		{

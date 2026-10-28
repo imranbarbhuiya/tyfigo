@@ -3,40 +3,12 @@ import process from 'node:process';
 
 import { Data } from 'effect';
 
+import { configSource } from './source.ts';
+
 import { formatProblems, pathKey, resolveConfigSourcesSync, resolveConfigSync, SourceIndex } from '../core/index.ts';
 
-import type { LayerSource, Path, Problem, ResolvedConfig } from '../core/index.ts';
-
-/**
- * The key of the non-enumerable {@link ConfigSource} on a config object exported by a generated server module.
- */
-export const configSource = Symbol.for('tyfigo.source');
-
-export interface SourcePosition {
-	readonly file: string;
-	readonly line: number;
-	readonly column: number;
-}
-
-export interface ConfigSource {
-	/**
-	 * The base config file, as an absolute path.
-	 */
-	readonly file: string;
-	readonly environment: string | undefined;
-	/**
-	 * The layer files that were merged, in the order they apply.
-	 */
-	readonly layers: readonly string[];
-	/**
-	 * The `.env` files that were read, in the order they apply.
-	 */
-	readonly envFiles: readonly string[];
-	/**
-	 * Where the value at `path` was set. A path the config does not have resolves to its nearest ancestor that it does have.
-	 */
-	readonly position: (path: Path) => SourcePosition | undefined;
-}
+import type { LayerSource, Problem, ResolvedConfig } from '../core/index.ts';
+import type { ConfigSource } from './source.ts';
 
 export class ConfigModuleError extends Data.TaggedError('ConfigModuleError')<{
 	readonly message: string;
@@ -58,11 +30,6 @@ export const deepFreeze = <T>(value: T): T => {
 	}
 	return value;
 };
-
-export const getConfigSource = (value: unknown): ConfigSource | undefined =>
-	typeof value === 'object' && value !== null
-		? (value as { readonly [configSource]?: ConfigSource })[configSource]
-		: undefined;
 
 const sourceOf = (result: ResolvedConfig): ConfigSource => {
 	const texts = new Map(result.layers.map((layer) => [layer.file, layer.text]));

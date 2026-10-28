@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -7,13 +7,14 @@ import { promisify } from 'node:util';
 
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fixtureFiles, useRuntime } from './helpers.ts';
+import { fixtureFiles, usePackage, useRuntime } from './helpers.ts';
 
 import { configSuffixes } from '../../src/core/index.ts';
 import { typeCheck, withTyfigo } from '../../src/plugins/next.ts';
 import { makeProject } from '../helpers.ts';
 
 const runtime = useRuntime();
+const pkg = usePackage();
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const next = join(repository, 'node_modules/next/dist/bin/next');
 const plugin = join(repository, 'src/plugins/next.ts');
@@ -84,9 +85,14 @@ const readTree = async (directory: string): Promise<string> => {
 const quoted = (value: unknown) => JSON.stringify(value).replaceAll('"', '&quot;');
 
 describe.each([
-	['Turbopack', [], { name: 'local-client', theme: 'dark' }],
-	['webpack', ['--webpack'], { name: 'base', theme: 'dark' }],
-] as const)('next build with %s', (_name, flags, clientServerRender) => {
+	['Turbopack', [], { name: 'local-client', theme: 'dark' }, /export loadEnv was not found/u],
+	[
+		'webpack',
+		['--webpack'],
+		{ name: 'base', theme: 'dark' },
+		/client\.jsx:2:1 - loadEnv from 'tyfigo' reads files and environment variables with Node\.js/u,
+	],
+] as const)('next build with %s', (_name, flags, clientServerRender, missingLoadEnv) => {
 	it('inlines the browser config in client code and bundles the server config', { timeout: 180_000 }, async () => {
 		const fixture = await makeNextFixture('client.config.yaml');
 		expect(await nextBuild(fixture, flags)).toBe('');
@@ -108,6 +114,16 @@ describe.each([
 	it('fails on a placeholder in client code', { timeout: 180_000 }, async () => {
 		const fixture = await makeNextFixture('bad.config.yaml');
 		expect(await nextBuild(fixture, flags)).toMatch(/'url' uses an environment placeholder/u);
+	});
+
+	it('fails when client code imports loadEnv', { timeout: 180_000 }, async () => {
+		const fixture = await makeNextFixture('client.config.yaml');
+		await cp(pkg.path, join(fixture, 'node_modules', 'tyfigo'), { recursive: true });
+		await writeFile(
+			join(fixture, 'app/client.jsx'),
+			"'use client';\nimport { loadEnv } from 'tyfigo';\n\nexport function Client() {\n\treturn <p>{String(loadEnv)}</p>;\n}\n",
+		);
+		expect(await nextBuild(fixture, flags)).toMatch(missingLoadEnv);
 	});
 });
 
@@ -140,6 +156,7 @@ describe('withTyfigo', () => {
 		expect(result.marked).toBe(true);
 		expect(rules).toEqual([
 			expect.objectContaining({ use: [expect.objectContaining({ options: { target: 'browser' } })] }),
+			expect.objectContaining({ enforce: 'pre', exclude: /[\\/]node_modules[\\/]/u }),
 		]);
 	});
 

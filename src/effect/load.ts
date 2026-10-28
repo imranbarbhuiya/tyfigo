@@ -1,8 +1,8 @@
 import { Context, Layer } from 'effect';
 
-import { ConfigValidationError, decodeConfig, decodeEnv } from '../schema.ts';
+import { ConfigValidationError, decodeConfig } from '../schema.ts';
 
-import type { ConfigSchema, LoadEnvOptions, LooseInput, SchemaInput, SchemaOutput } from '../schema.ts';
+import type { ConfigSchema, LooseInput, SchemaInput, SchemaOutput } from '../schema.ts';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { Effect, Schema } from 'effect';
 
@@ -42,20 +42,6 @@ export const loadConfig = <S extends EffectConfigSchema>(
 	>;
 
 /**
- * Validates `.env`, `.env.local`, `.env.<environment>` and `.env.<environment>.local` with the real environment on top.
- * Never writes `process.env`.
- */
-export const loadEnv = <S extends EffectConfigSchema>(
-	schema: S,
-	options: LoadEnvOptions = {},
-): Effect.Effect<SchemaOutput<S>, ConfigError, SchemaServices<S>> =>
-	decodeEnv(schema as ConfigSchema, { ...options, async: true, native: true }) as Effect.Effect<
-		SchemaOutput<S>,
-		ConfigError,
-		SchemaServices<S>
-	>;
-
-/**
  * A layer that provides `service` with the validated config.
  */
 export const layerConfig = <I, S extends EffectConfigSchema>(
@@ -63,15 +49,6 @@ export const layerConfig = <I, S extends EffectConfigSchema>(
 	config: LooseInput<SchemaInput<S>>,
 	schema: S,
 ): Layer.Layer<I, ConfigError, SchemaServices<S>> => Layer.effect(service, loadConfig(config, schema));
-
-/**
- * A layer that provides `service` with the validated environment variables.
- */
-export const layerEnv = <I, S extends EffectConfigSchema>(
-	service: Context.Key<I, SchemaOutput<S>>,
-	schema: S,
-	options: LoadEnvOptions = {},
-): Layer.Layer<I, ConfigError, SchemaServices<S>> => Layer.effect(service, loadEnv(schema, options));
 
 /**
  * Defines a service class for a validated config, with a `layer` that provides it.

@@ -38,10 +38,12 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.mts",
+			"browser": "./dist/index.browser.mjs",
 			"default": "./dist/index.mjs"
 		},
 		"./effect": {
 			"types": "./dist/effect.d.mts",
+			"browser": "./dist/effect.browser.mjs",
 			"default": "./dist/effect.mjs"
 		},
 		"./runtime": {
@@ -95,7 +97,8 @@
 		"./loader": {
 			"types": "./dist/plugins/loader.d.mts",
 			"default": "./dist/plugins/loader.mjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"publishConfig": {
 		"access": "public"

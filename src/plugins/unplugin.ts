@@ -1,6 +1,12 @@
 import { createUnplugin } from 'unplugin';
 
-import { configFilePattern, isServerPlatform, loadConfigImport } from './shared.ts';
+import {
+	configFilePattern,
+	findNodeOnlyImports,
+	isServerPlatform,
+	loadConfigImport,
+	tyfigoImportPattern,
+} from './shared.ts';
 
 import type { LoadOptions } from '../runtime/load.ts';
 import type { TyfigoPluginOptions, WebpackLikeCompiler } from './shared.ts';
@@ -62,6 +68,17 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 				});
 				for (const file of result.watchFiles) this.addWatchFile(file);
 				return { code: result.code, moduleType: 'js' };
+			},
+		},
+		transform: {
+			filter: {
+				id: { include: /\.(?:[cm]?[jt]sx?|vue|svelte|astro)(?:\?|$)/u, exclude: /[\\/]node_modules[\\/]/u },
+				code: tyfigoImportPattern,
+			},
+			handler(code, id, transformOptions?: { readonly ssr?: boolean }) {
+				if ((options.target ?? detect(this, transformOptions).target) !== 'browser') return;
+				const messages = findNodeOnlyImports(code, id);
+				if (messages.length > 0) throw new Error(messages.join('\n'));
 			},
 		},
 		vite: {
