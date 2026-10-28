@@ -1,0 +1,28 @@
+{
+	"compilerOptions": {
+		"target": "es2024",
+		"lib": ["es2024", "dom", "dom.iterable"],
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"strict": true,
+		"noEmit": true,
+		"allowJs": true,
+		"allowImportingTsExtensions": true,
+		"isolatedModules": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"incremental": true,
+		"skipLibCheck": true,
+		"types": ["node"],
+		"plugins": [{ "name": "next" }]
+	},
+	"contentMappers": [
+		{
+			"package": "tyfigo",
+			"extensions": [".config.yaml", ".config.yml", ".config.toml", ".config.jsonc", ".config.json5"]
+		}
+	],
+	"include": ["next-env.d.ts", "app", "config", "*.ts", "*.mts", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+	"exclude": ["node_modules"]
+}

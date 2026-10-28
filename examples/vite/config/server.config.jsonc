@@ -1,0 +1,6 @@
+// Only imported by the SSR entry, so it can read `.env` files and environment variables when the server starts.
+{
+	"port": "${PORT:-3000}",
+	"sessionSecret": "${SESSION_SECRET}",
+	"compression": false,
+}

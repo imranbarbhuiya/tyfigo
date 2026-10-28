@@ -1,0 +1,7 @@
+{
+	"theme": "dark",
+	"api": {
+		"baseUrl": "https://example.com/api",
+		"retries": 3,
+	},
+}

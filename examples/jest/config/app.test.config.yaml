@@ -1,0 +1,4 @@
+tax:
+  rate: 0.1
+payments:
+  provider: fake

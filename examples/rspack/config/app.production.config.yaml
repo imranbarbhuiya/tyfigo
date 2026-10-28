@@ -1,0 +1,5 @@
+analytics:
+  enabled: true
+  sampleRate: 0.25
+links:
+  docs: https://example.com/docs

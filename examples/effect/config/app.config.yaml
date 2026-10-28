@@ -1,0 +1,10 @@
+name: tyfigo-effect-example
+logLevel: debug
+http:
+  port: ${PORT:-3000}
+database:
+  url: ${DATABASE_URL}
+  password: ${DATABASE_PASSWORD}
+jobs:
+  workers: 2
+  queues: [default]

@@ -1,0 +1,10 @@
+name = "tyfigo-bun-example"
+log_level = "debug"
+
+[server]
+port = "${PORT:-3000}"
+idle_timeout = 10
+
+[redis]
+url = "${REDIS_URL}"
+ttl = 60

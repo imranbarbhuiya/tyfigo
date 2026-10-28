@@ -1,0 +1,18 @@
+{
+	"name": "example-nub",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "nub src/main.ts",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@nubjs/nub": "^0.9.7",
+		"@types/node": "^26.6.6",
+		"typescript": "7.1.0-beta"
+	}
+}

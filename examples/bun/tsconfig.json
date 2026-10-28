@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
+		"types": ["bun"]
+	},
+	"contentMappers": [
+		{
+			"package": "tyfigo",
+			"extensions": [".config.yaml", ".config.yml", ".config.toml", ".config.jsonc", ".config.json5"]
+		}
+	],
+	"include": ["src", "config", "*.ts"]
+}

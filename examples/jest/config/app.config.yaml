@@ -1,0 +1,8 @@
+currency: USD
+tax:
+  rate: 0.2
+  inclusive: false
+payments:
+  provider: stripe
+  apiKey: ${PAYMENTS_API_KEY}
+  timeoutMs: ${PAYMENTS_TIMEOUT_MS:-5000}

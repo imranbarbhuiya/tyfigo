@@ -1,0 +1,4 @@
+port: ${PORT:-3000}
+cache:
+  url: ${CACHE_URL}
+  maxEntries: 100

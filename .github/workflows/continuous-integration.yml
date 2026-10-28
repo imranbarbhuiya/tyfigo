@@ -69,3 +69,36 @@ jobs:
         run: bun run typecheck --pretty false
       - name: Build Code
         run: bun run build
+
+  Examples:
+    name: Example (${{ matrix.example }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [node, bun, nub, vite, next, esbuild, webpack, rspack, jest, effect]
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v7.0.1
+      - name: Add problem matcher
+        run: echo "::add-matcher::.github/problemMatchers/tsc.json"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+      - name: Use Node.js v24
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+      - name: Build tyfigo
+        run: bun run build
+      - name: Typecheck
+        working-directory: examples/${{ matrix.example }}
+        run: bun run typecheck --pretty false
+      - name: Check
+        working-directory: examples/${{ matrix.example }}
+        run: bun run check

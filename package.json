@@ -23,6 +23,9 @@
 		"type": "git",
 		"url": "git+https://github.com/imranbarbhuiya/tyfigo.git"
 	},
+	"workspaces": [
+		"examples/*"
+	],
 	"files": [
 		"dist"
 	],
@@ -114,7 +117,7 @@
 	"dependencies": {
 		"@rgrove/parse-xml": "^5.0.0",
 		"@standard-schema/spec": "^1.1.0",
-		"effect": "^4.0.6",
+		"effect": "^4.0.7",
 		"jsonc-eslint-parser": "^3.3.0",
 		"jsonc-parser": "^3.3.1",
 		"toml-eslint-parser": "^1.0.3",
@@ -125,7 +128,7 @@
 		"@commitlint/cli": "^21.2.4",
 		"@commitlint/config-conventional": "^21.2.4",
 		"@effect/tsgo": "^0.59.0",
-		"@effect/vitest": "^4.0.6",
+		"@effect/vitest": "^4.0.7",
 		"@favware/cliff-jumper": "^6.1.0",
 		"@imranbarbhuiya/oxc-config": "^0.4.1",
 		"@jest/transform": "^30.5.2",

@@ -1,0 +1,19 @@
+{
+	"name": "example-esbuild",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "node build.ts",
+		"start": "node dist/main.js",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "node build.ts && node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.6",
+		"esbuild": "^0.28.2",
+		"typescript": "7.1.0-beta"
+	}
+}

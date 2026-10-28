@@ -1,0 +1,7 @@
+site:
+  name: tyfigo + Next.js
+  supportEmail: support@localhost
+cms:
+  url: ${CMS_URL}
+  token: ${CMS_TOKEN}
+  revalidateSeconds: 60

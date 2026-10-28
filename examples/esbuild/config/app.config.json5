@@ -1,0 +1,9 @@
+{
+	service: 'tyfigo-esbuild-example',
+	port: '${PORT:-3000}',
+	queue: {
+		url: '${QUEUE_URL}',
+		concurrency: 2,
+	},
+	retryDelaysMs: [100, 500],
+}

@@ -1,0 +1,20 @@
+{
+	"name": "example-rspack",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "rspack build",
+		"start": "node dist/server/server.cjs",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "rspack build && node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@rspack/cli": "^2.2.9",
+		"@rspack/core": "^2.2.9",
+		"@types/node": "^26.6.6",
+		"typescript": "7.1.0-beta"
+	}
+}

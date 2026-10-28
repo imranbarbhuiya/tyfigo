@@ -1,0 +1,6 @@
+{
+	queue: {
+		concurrency: 16,
+	},
+	retryDelaysMs: [100, 1000, 5000],
+}

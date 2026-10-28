@@ -1,0 +1,6 @@
+title: tyfigo + Rspack
+analytics:
+  enabled: false
+  sampleRate: 1
+links:
+  docs: http://localhost:3000/docs
