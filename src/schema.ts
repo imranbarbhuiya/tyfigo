@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import process from 'node:process';
 
-import { Data, Effect, Schema } from 'effect';
+import { Data, Effect, Schema, SchemaIssue } from 'effect';
 
 import { processEnv, readEnv } from './core/env.ts';
 import { formatPath } from './core/positions.ts';
@@ -97,30 +97,46 @@ export interface ValidateOptions {
 	 */
 	readonly async: boolean;
 	/**
+	 * Decode an Effect Schema with Effect itself instead of its Standard Schema adapter, so its decoding services are kept.
+	 */
+	readonly native?: boolean | undefined;
+	/**
 	 * Issues found before validation, such as unreadable `.env` files. They fail validation even when the schema passes.
 	 */
 	readonly issues?: readonly ConfigIssue[] | undefined;
 }
+
+const standardFormatter = SchemaIssue.makeFormatterStandardSchemaV1();
+
+const decodeNative = (schema: Schema.Top, value: unknown): Effect.Effect<StandardSchemaV1.Result<unknown>> =>
+	(Schema.decodeUnknownEffect(schema)(value, { errors: 'all' }) as Effect.Effect<unknown, Schema.SchemaError>).pipe(
+		Effect.map((output): StandardSchemaV1.Result<unknown> => ({ value: output })),
+		Effect.catch((error) => Effect.succeed(standardFormatter(error.issue))),
+	);
 
 export const validate = Effect.fn('validate')(function* <S extends ConfigSchema>(
 	schema: S,
 	value: unknown,
 	options: ValidateOptions,
 ) {
-	const pending = toStandardSchema(schema)['~standard'].validate(value);
 	let result: StandardSchemaV1.Result<unknown>;
-	if ('then' in pending) {
-		if (!options.async) {
-			void pending.catch(() => undefined);
-			return yield* Effect.die(
-				new TypeError(
-					`The schema for the ${options.subject} validates asynchronously; use loadConfigAsync or loadEnvAsync`,
-				),
-			);
-		}
-		result = yield* Effect.promise(async () => pending);
+	if (options.native && Schema.isSchema(schema)) {
+		result = yield* decodeNative(schema, value);
 	} else {
-		result = pending;
+		const pending = toStandardSchema(schema)['~standard'].validate(value);
+		if ('then' in pending) {
+			if (!options.async) {
+				void pending.catch(() => undefined);
+				return yield* Effect.die(
+					new TypeError(
+						`The schema for the ${options.subject} validates asynchronously; use loadConfigAsync or loadEnvAsync`,
+					),
+				);
+			}
+			result = yield* Effect.promise(async () => pending);
+		} else {
+			result = pending;
+		}
 	}
 
 	const issues = [
@@ -143,13 +159,14 @@ export const validate = Effect.fn('validate')(function* <S extends ConfigSchema>
 export const decodeConfig = <S extends ConfigSchema>(
 	config: unknown,
 	schema: S,
-	options: { readonly async: boolean },
+	options: { readonly async: boolean; readonly native?: boolean | undefined },
 ) => {
 	const source = configSource(config);
 	return validate(schema, config, {
 		subject: source ? `config ${source.file}` : 'config',
 		source,
 		async: options.async,
+		native: options.native,
 	});
 };
 
@@ -163,7 +180,7 @@ export interface LoadEnvOptions extends ResolveOptions {
 
 export const decodeEnv = Effect.fn('decodeEnv')(function* <S extends ConfigSchema>(
 	schema: S,
-	options: LoadEnvOptions & { readonly async: boolean },
+	options: LoadEnvOptions & { readonly async: boolean; readonly native?: boolean | undefined },
 ) {
 	const env = options.env ?? processEnv();
 	const environment = options.environment ?? (env.NODE_ENV || undefined);
@@ -171,6 +188,7 @@ export const decodeEnv = Effect.fn('decodeEnv')(function* <S extends ConfigSchem
 	return yield* validate(schema, result.variables, {
 		subject: 'environment variables',
 		async: options.async,
+		native: options.native,
 		issues: result.problems.map((problem) => ({
 			path: [],
 			message: problem.message,
