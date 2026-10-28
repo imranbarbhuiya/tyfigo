@@ -12,6 +12,8 @@
 > [!WARNING]
 > tyfigo is in early development and not usable yet.
 
+Read the documentation at [tyfigo.vercel.app](https://tyfigo.vercel.app).
+
 ## Install
 
 ```bash
