@@ -1,8 +1,8 @@
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 import { Effect } from 'effect';
 
-import { isFile, searchDirectories } from '../core/files.ts';
+import { findProjectRoot, isFile, searchDirectories } from '../core/files.ts';
 import {
 	configSuffixes,
 	envFileNames,
@@ -20,6 +20,7 @@ import {
 } from '../core/index.ts';
 
 import type { Path, PositionMap, Problem } from '../core/index.ts';
+import type { BundledConfig } from './resolve.ts';
 
 export type LoadTarget = 'server' | 'browser';
 
@@ -38,6 +39,11 @@ export interface LoadOptions {
 	 * The specifier the server module imports the runtime from. Defaults to `tyfigo/runtime`.
 	 */
 	readonly runtime?: string | undefined;
+	/**
+	 * For `server`: inline the text of the layer files that exist at build time, and read `.env` files and environment variables
+	 * from `process.cwd()` when the module runs, so a bundle does not depend on the paths of the machine that built it.
+	 */
+	readonly bundle?: boolean | undefined;
 }
 
 export interface LoadResult {
@@ -76,15 +82,18 @@ const watchFilesOf = Effect.fn('watchFilesOf')(function* (
 	return files;
 });
 
-const literal = (value: unknown, indent: string): string => {
+/**
+ * A JavaScript expression that evaluates to a deep-frozen copy of a config value.
+ */
+export const valueLiteral = (value: unknown, indent = ''): string => {
 	if (value === undefined) return 'undefined';
 	if (typeof value === 'number') return Object.is(value, -0) ? '-0' : String(value);
 	if (typeof value === 'bigint') return `${value}n`;
-	if (value instanceof Date) return `new Date(${literal(value.getTime(), indent)})`;
+	if (value instanceof Date) return `new Date(${valueLiteral(value.getTime(), indent)})`;
 	const inner = `${indent}\t`;
 	if (Array.isArray(value)) {
 		if (value.length === 0) return 'Object.freeze([])';
-		const items = value.map((item) => `${inner}${literal(item, inner)},\n`);
+		const items = value.map((item) => `${inner}${valueLiteral(item, inner)},\n`);
 		return `Object.freeze([\n${items.join('')}${indent}])`;
 	}
 	if (isPlainObject(value)) {
@@ -92,7 +101,7 @@ const literal = (value: unknown, indent: string): string => {
 		if (entries.length === 0) return 'Object.freeze({})';
 		const properties = entries.map(([key, item]) => {
 			const name = key === '__proto__' ? `[${JSON.stringify(key)}]` : JSON.stringify(key);
-			return `${inner}${name}: ${literal(item, inner)},\n`;
+			return `${inner}${name}: ${valueLiteral(item, inner)},\n`;
 		});
 		return `Object.freeze({\n${properties.join('')}${indent}})`;
 	}
@@ -163,10 +172,35 @@ const browserModule = Effect.fn('browserModule')(function* (file: string, option
 	}
 
 	const code =
-		problems.length > 0 ? failingCode(result.file, problems) : `export default ${literal(result.value, '')};\n`;
+		problems.length > 0
+			? failingCode(result.file, problems)
+			: `export default ${valueLiteral(result.value, '')};\n`;
 	return {
 		code,
 		watchFiles: yield* watchFilesOf(result.file, environment, 'browser'),
+		problems,
+	} satisfies LoadResult;
+});
+
+const bundledServerModule = Effect.fn('bundledServerModule')(function* (file: string, options: LoadOptions) {
+	const environment = options.environment ?? (processEnv().NODE_ENV || undefined);
+	const result = yield* resolveConfig(file, { environment });
+	const problems = result.problems.filter((problem) => problem.code !== 'missing-variable');
+	const root = (yield* findProjectRoot(dirname(result.file))) ?? dirname(result.file);
+	const name = (path: string) => relative(root, path).split(sep).join('/');
+	const bundle: BundledConfig = {
+		file: name(result.file),
+		environment,
+		layers: result.layers.map((layer) => ({ file: name(layer.file), kind: layer.kind, text: layer.text })),
+	};
+
+	const code =
+		problems.length > 0
+			? failingCode(result.file, problems)
+			: `import { resolveBundledConfigModule } from ${JSON.stringify(options.runtime ?? 'tyfigo/runtime')};\n\nexport default resolveBundledConfigModule(${JSON.stringify(bundle)});\n`;
+	return {
+		code,
+		watchFiles: yield* watchFilesOf(result.file, environment, 'server'),
 		problems,
 	} satisfies LoadResult;
 });
@@ -176,7 +210,8 @@ const browserModule = Effect.fn('browserModule')(function* (file: string, option
  */
 export const loadModule = Effect.fn('loadModule')(function* (path: string, options: LoadOptions) {
 	const file = resolve(path);
-	return options.target === 'browser' ? yield* browserModule(file, options) : yield* serverModule(file, options);
+	if (options.target === 'browser') return yield* browserModule(file, options);
+	return options.bundle ? yield* bundledServerModule(file, options) : yield* serverModule(file, options);
 });
 
 /**

@@ -15,14 +15,15 @@ const filter = new RegExp(`[^/\\\\](?:${configSuffixes.map((suffix) => suffix.re
 
 /**
  * The tyfigo Bun plugin. Importing `tyfigo/bun` (a `bunfig.toml` `preload`) registers it for the runtime and `bun test`; pass
- * `tyfigo()` in `plugins` to use it with `Bun.build`, where a `browser` target inlines the config.
+ * `tyfigo()` in `plugins` to use it with `Bun.build`, where a `browser` target inlines the config and a server target inlines the config files and reads `.env` files when it runs.
  */
 export const tyfigo = (): BunPlugin => ({
 	name: 'tyfigo',
 	setup(build) {
-		const target = (build.config as typeof build.config | undefined)?.target === 'browser' ? 'browser' : 'server';
+		const config = build.config as typeof build.config | undefined;
+		const target = config?.target === 'browser' ? 'browser' : 'server';
 		build.onLoad({ filter }, ({ path }) => {
-			const result = load(path, { target, runtime });
+			const result = load(path, { target, runtime, bundle: config !== undefined });
 			if (result.problems.length > 0) {
 				throw new Error(`Invalid config ${path}\n${formatProblems(result.problems)}`);
 			}

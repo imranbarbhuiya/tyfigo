@@ -1,3 +1,5 @@
+import { readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -90,5 +92,23 @@ describe('bun --preload tyfigo/bun', () => {
 		expect(server.stderr).toContain(
 			"config/app.config.yaml:1:7 - 'port' uses an environment placeholder, which browser builds cannot read (browser-placeholder)",
 		);
+	});
+
+	it('inlines the config files in a server Bun.build', async () => {
+		const root = await makeProject({
+			...fixture,
+			'build.ts': [
+				`import { tyfigo } from ${JSON.stringify(preload)};`,
+				"await Bun.build({ entrypoints: ['./main.ts'], target: 'bun', outdir: 'out', plugins: [tyfigo()] });",
+				'',
+			].join('\n'),
+		});
+		expect(run('bun', ['build.ts'], root).status).toBe(0);
+		const bundle = await readFile(join(root, 'out/main.js'), 'utf8');
+		expect(bundle).not.toContain(join(root, 'config'));
+		await rm(join(root, 'config'), { recursive: true });
+		const result = run('bun', ['out/main.js'], root);
+		expect(result.stderr).toBe('');
+		expect(JSON.parse(result.stdout)).toEqual(merged);
 	});
 });

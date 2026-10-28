@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,7 @@ const evaluateError = async (directory: string, code: string) => {
 
 afterEach(() => {
 	vi.unstubAllEnvs();
+	vi.restoreAllMocks();
 });
 
 describe('load (server)', () => {
@@ -215,5 +217,74 @@ describe('load (browser)', () => {
 	it('reports a missing file', () => {
 		const result = load('/nowhere/app.config.toml', { target: 'browser' });
 		expect(result.problems).toEqual([expect.objectContaining({ code: 'file-not-found' })]);
+	});
+});
+
+describe('load (bundled server)', () => {
+	it('inlines the layer files and reads .env files from the working directory when it runs', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'.env': 'DB_HOST=build-machine',
+			'config/app.config.yaml': 'port: ${PORT:-3000}\ndb:\n  host: ${DB_HOST}\n  pool: 5\nname: app\n',
+			'config/app.production.config.yaml': 'db:\n  pool: 20\n',
+			'config/app.staging.config.yaml': 'db:\n  pool: 1\n',
+			'app.local.config.yaml': 'name: local\n',
+		});
+		const result = load(join(root, 'config/app.config.yaml'), {
+			target: 'server',
+			bundle: true,
+			environment: 'production',
+			runtime,
+		});
+		expect(result.problems).toEqual([]);
+		expect(result.code).not.toContain(root);
+		expect(result.code).not.toContain('staging');
+		expect(result.watchFiles).toContain(join(root, '.env.production'));
+
+		const deploy = await makeProject({ '.env': 'DB_HOST=deployed', '.env.production': 'PORT=8080' });
+		vi.spyOn(process, 'cwd').mockReturnValue(deploy);
+		const config = (await evaluate(root, result.code)) as Record<string, unknown>;
+		expect(config).toEqual({ port: 8_080, db: { host: 'deployed', pool: 20 }, name: 'local' });
+		expect(Object.isFrozen(config.db)).toBe(true);
+
+		const source = getConfigSource(config);
+		expect(source?.file).toBe('config/app.config.yaml');
+		expect(source?.environment).toBe('production');
+		expect(source?.layers).toEqual([
+			'config/app.config.yaml',
+			'config/app.production.config.yaml',
+			'app.local.config.yaml',
+		]);
+		expect(source?.envFiles).toEqual([join(deploy, '.env'), join(deploy, '.env.production')]);
+		expect(source?.position(['db', 'pool'])).toEqual({
+			file: 'config/app.production.config.yaml',
+			line: 2,
+			column: 9,
+		});
+	});
+
+	it('reports file problems when it builds and missing variables when it runs', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'app.config.toml': 'url = "${DATABASE_URL}"\nname = "${NAME:?set NAME}"\n',
+			'app.local.config.toml': 'url = 1\n',
+		});
+		const invalid = load(join(root, 'app.config.toml'), { target: 'server', bundle: true, runtime });
+		expect(invalid.problems.map((problem) => problem.code)).toEqual(['type-mismatch']);
+		expect(invalid.code).toMatch(/^throw new Error\(/u);
+
+		await writeFile(join(root, 'app.local.config.toml'), 'url = "local"\n');
+		const result = load(join(root, 'app.config.toml'), { target: 'server', bundle: true, runtime });
+		expect(result.problems).toEqual([]);
+
+		vi.spyOn(process, 'cwd').mockReturnValue(await makeProject({}));
+		const error = await evaluateError(root, result.code);
+		expect(error.message).toBe(
+			[
+				'Invalid config app.config.toml',
+				"app.config.toml:1:8 - Environment variable 'DATABASE_URL' is not set (missing-variable)",
+				'app.config.toml:2:9 - set NAME (missing-variable)',
+			].join('\n'),
+		);
 	});
 });
