@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { basename, dirname, relative, resolve } from 'node:path';
 
-import { parseConfigFileName } from '../core/formats/index.ts';
+import { configSuffixes, parseConfigFileName } from '../core/formats/index.ts';
 import { isPlainObject, resolvePlaceholders } from '../core/placeholders.ts';
 import { pathKey, SourceIndex } from '../core/positions.ts';
 import { fileProblem } from '../core/problems.ts';
@@ -333,9 +333,10 @@ const layerModule = (generator: Generator, value: unknown, specifier: string) =>
 		generator.mapped(statements, 'satisfies', [], 'value', SpanMapKind.Atom).write(' Override<Config>;\n');
 	}
 
-	const writer = new Writer().write(
-		`import type Base from ${JSON.stringify(specifier)};\n\ntype Config = typeof Base;\n`,
-	);
+	const writer = new Writer()
+		.write('import type Base from ')
+		.map(JSON.stringify(specifier), 0, 0, SpanMapKind.Atom)
+		.write(';\n\ntype Config = typeof Base;\n');
 	if (statements.text !== '') {
 		writer.write(
 			'type Override<T> = T extends readonly unknown[]\n\t? T\n\t: T extends object\n\t\t? [keyof T] extends [never]\n\t\t\t? { readonly [key: string]: never }\n\t\t\t: { readonly [K in keyof T]?: Override<T[K]> }\n\t\t: T;\n',
@@ -355,7 +356,8 @@ export const generateTypes = (path: string, text: string, options: GenerateOptio
 	const file = resolve(path);
 	const role = configFileRole(basename(file));
 	if (!role) {
-		return untyped([toDiagnostic(fileProblem(file, 'unsupported-file', `${basename(file)} is not a config file`))]);
+		const message = `${basename(file)} is not a config file. tyfigo handles files ending in ${configSuffixes.join(', ')}`;
+		return untyped([toDiagnostic(fileProblem(file, 'unsupported-file', message))]);
 	}
 
 	const parsed = role.format.parse(text, file);
