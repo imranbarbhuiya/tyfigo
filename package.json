@@ -1,6 +1,6 @@
 {
 	"name": "tyfigo",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Typed, validated application config for TypeScript: import layered YAML, TOML, JSONC, JSON5, INI, .properties and XML config files, typed by a TypeScript 7.1 content mapper",
 	"keywords": [
 		"config",

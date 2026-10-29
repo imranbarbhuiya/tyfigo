@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# [0.2.0](https://github.com/imranbarbhuiya/tyfigo/compare/v0.1.0...v0.2.0) - (2026-10-29)
+
+## 🐛 Bug Fixes
+
+- Pick a server bundle's environment when it starts (#17) ([ce8c251](https://github.com/imranbarbhuiya/tyfigo/commit/ce8c2515b46a7371198be048eda3ec9a397de5c4))
+
+## 🚀 Features
+
+- Support config files in a .config directory (#18) ([3197dcf](https://github.com/imranbarbhuiya/tyfigo/commit/3197dcf1738b0fd373719e433de90b643b7b4e43))
+
 # [0.1.0]
 (https://github.com/imranbarbhuiya/tyfigo/tree/v0.1.0) - (2026-10-29)
 
