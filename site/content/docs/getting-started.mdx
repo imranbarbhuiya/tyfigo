@@ -50,6 +50,10 @@ files live in:
 }
 ```
 
+Keep this list as it is unless you keep config files in a `.config/` folder (`.config/app.yaml`). That layout needs the plain
+extensions too (`.yaml`, `.toml`, …), which makes tyfigo the owner of every file with them; see
+[A `.config` directory](/docs/config-files#a-config-directory) before you add them.
+
 Including `config` makes tsc check environment and local files even when no code imports them directly. TypeScript 7 defaults
 `types` to `[]`, so list `node` (or `bun`) yourself. `skipLibCheck` keeps tsc from checking the bundler types that the
 plugin declarations reference, which you only have installed for the bundler you use.

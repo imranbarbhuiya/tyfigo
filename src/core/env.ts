@@ -5,7 +5,7 @@ import { parseEnv } from 'node:util';
 
 import { Effect, Result } from 'effect';
 
-import { findFile, searchDirectories } from './files.ts';
+import { envDirectories, findFile } from './files.ts';
 import { fileProblem } from './problems.ts';
 
 import type { Problem } from './problems.ts';
@@ -34,13 +34,14 @@ export const envFileNames = (environment?: string): readonly string[] =>
 
 /**
  * Reads `.env`, `.env.local`, `.env.<environment>` and `.env.<environment>.local` (each later one wins) and puts `env` on top.
- * Each file is searched next to `baseFile` first, then in the nearest directory with a `package.json`. Never writes `process.env`.
+ * Each file is searched next to `baseFile` first (above its `.config` directory when it is in one), then in the nearest directory
+ * with a `package.json`. Never writes `process.env`.
  */
 export const readEnv = Effect.fn('readEnv')(function* (
 	baseFile: string,
 	options: { readonly environment?: string | undefined; readonly env?: EnvVariables | undefined } = {},
 ) {
-	const directories = yield* searchDirectories(resolve(baseFile));
+	const directories = yield* envDirectories(resolve(baseFile));
 	const variables: Record<string, string | undefined> = {};
 	const files: string[] = [];
 	const problems: Problem[] = [];

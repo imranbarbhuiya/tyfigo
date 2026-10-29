@@ -17,7 +17,12 @@ export default {
 };
 ```
 
-Add `ini`, `properties` and `xml` to both lists if you use those formats.
+Add `ini`, `properties` and `xml` to both lists if you use those formats. For files in a
+[`.config` directory](/docs/config-files#a-config-directory), use a pattern that matches both layouts:
+
+```js
+'(\\.config\\.|[\\\\/]\\.config[\\\\/][^\\\\/]+\\.)(yaml|yml|toml|jsonc|json5)$': 'tyfigo/jest',
+```
 
 Jest sets `NODE_ENV=test`, so `app.test.config.yaml` applies:
 

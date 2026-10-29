@@ -165,6 +165,29 @@ describe('load (server)', () => {
 		]);
 	});
 
+	it('watches the layers of a .config file in the .config directories and .env files above them', async () => {
+		const root = await makeProject({ 'package.json': '{}', 'api/.config/app.toml': '' });
+		const result = load(join(root, 'api/.config/app.toml'), { target: 'server', environment: 'test', runtime });
+		const config = join(root, 'api/.config');
+		const api = join(root, 'api');
+		expect(result.watchFiles).toEqual([
+			join(config, 'app.toml'),
+			join(config, 'app.test.toml'),
+			join(config, 'app.local.toml'),
+			join(root, '.config/app.local.toml'),
+			join(config, 'app.test.local.toml'),
+			join(root, '.config/app.test.local.toml'),
+			join(api, '.env'),
+			join(root, '.env'),
+			join(api, '.env.local'),
+			join(root, '.env.local'),
+			join(api, '.env.test'),
+			join(root, '.env.test'),
+			join(api, '.env.test.local'),
+			join(root, '.env.test.local'),
+		]);
+	});
+
 	it('reports a missing or unsupported file', async () => {
 		const root = await makeProject({ 'package.json': '{}' });
 		expect(load(join(root, 'app.config.yaml'), { target: 'server' }).problems).toEqual([

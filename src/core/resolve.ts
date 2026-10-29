@@ -5,7 +5,7 @@ import { Effect, Result } from 'effect';
 
 import { processEnv, readEnv } from './env.ts';
 import { isFile } from './files.ts';
-import { configSuffixes, parseConfigFileName } from './formats/index.ts';
+import { configFileDescription, parseConfigPath } from './formats/index.ts';
 import { discoverLayers } from './layers.ts';
 import { locate, mergeLayer } from './merge.ts';
 import { resolvePlaceholders } from './placeholders.ts';
@@ -139,11 +139,7 @@ const mergeLayers = Effect.fn('mergeLayers')(function* <Layer extends LayerFile>
 });
 
 const unsupportedFile = (file: string) =>
-	fileProblem(
-		file,
-		'unsupported-file',
-		`${basename(file)} is not a config file; expected a name ending in ${configSuffixes.join(', ')}`,
-	);
+	fileProblem(file, 'unsupported-file', `${basename(file)} is not a config file; expected ${configFileDescription}`);
 
 /**
  * Reads a config file with its environment and local layers and `.env` files, resolves placeholders and merges the layers.
@@ -153,7 +149,7 @@ export const resolveConfig = Effect.fn('resolveConfig')(function* (path: string,
 	const file = resolve(path);
 	const env = options.env ?? processEnv();
 	const environment = options.environment ?? (env.NODE_ENV || undefined);
-	const name = parseConfigFileName(basename(file));
+	const name = parseConfigPath(file);
 	const empty = {
 		file,
 		format: name?.format,
@@ -209,7 +205,7 @@ export const resolveConfigSources = Effect.fn('resolveConfigSources')(function* 
 ) {
 	const env = options.env ?? processEnv();
 	const environment = options.environment ?? (env.NODE_ENV || undefined);
-	const name = parseConfigFileName(basename(file));
+	const name = parseConfigPath(file);
 	const empty = {
 		file,
 		format: name?.format,

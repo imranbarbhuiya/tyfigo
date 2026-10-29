@@ -4,7 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { badValue, fixture, formatsFixture, formatsMerged, merged, run } from './spawn.ts';
+import {
+	badValue,
+	configDirectoryFixture,
+	configDirectoryMerged,
+	fixture,
+	formatsFixture,
+	formatsMerged,
+	merged,
+	run,
+} from './spawn.ts';
 
 import { makeProject } from '../helpers.ts';
 
@@ -40,6 +49,17 @@ describe('bun --preload tyfigo/bun', () => {
 		const result = run('bun', ['--preload', preload, 'plain.ts'], root);
 		expect(result.stderr).toBe('');
 		expect(JSON.parse(result.stdout)).toEqual({ data: { plain: true }, toml: { value: '${NOT_A_PLACEHOLDER}' } });
+	});
+
+	it('imports files in a .config directory and leaves other .yaml files to Bun', async () => {
+		const root = await makeProject(configDirectoryFixture);
+		const result = run('bun', ['--preload', preload, 'main.ts'], root);
+		expect(result.stderr).toBe('');
+		expect(JSON.parse(result.stdout)).toEqual(configDirectoryMerged);
+
+		const plain = run('bun', ['--preload', preload, 'plain.ts'], root);
+		expect(plain.stderr).toBe('');
+		expect(JSON.parse(plain.stdout)).toEqual({ plain: true });
 	});
 
 	it('imports INI, .properties and XML config files with their layers', async () => {

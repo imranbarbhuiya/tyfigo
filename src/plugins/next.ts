@@ -5,8 +5,9 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 
-import { configFilePattern } from './shared.ts';
 import { loaderOptions, loaderPath, turbopackRules } from './turbopack.ts';
+
+import { configPathPattern } from '../core/index.ts';
 
 import type { TyfigoPluginOptions } from './shared.ts';
 import type { NextConfig } from 'next';
@@ -49,7 +50,7 @@ export const typeCheck = async (projectDir: string, tsconfigPath = 'tsconfig.jso
 export const withTyfigo = (nextConfig: NextConfig = {}, options: WithTyfigoOptions = {}): NextConfig => {
 	const { typeCheck: check = !nextConfig.typescript?.ignoreBuildErrors, ...loader } = options;
 	const rule = (target: 'server' | 'browser') => ({
-		test: configFilePattern,
+		test: configPathPattern,
 		type: 'javascript/auto',
 		use: [{ loader: loaderPath, options: loaderOptions(loader, target) }],
 	});

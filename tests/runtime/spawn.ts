@@ -67,3 +67,25 @@ export const formatsMerged = {
 	jvm: { heap: { max: 1_024, gc: 'g1' } },
 	site: { site: { '@lang': 'en', debug: false, page: ['a', 'b'] } },
 };
+
+export const configDirectoryFixture = {
+	'package.json': '{ "type": "module" }',
+	'.env': 'PORT=8080\n',
+	'.config/app.yaml': 'port: ${PORT:-3000}\nname: app\ndb:\n  pool: 5\n',
+	'.config/app.production.yaml': 'db:\n  pool: 20\n',
+	'.config/app.local.yaml': 'name: local\n',
+	'.config/cache.toml': 'ttl = 60\n',
+	'data.yaml': 'plain: true\n',
+	'main.ts': [
+		"import config from './.config/app.yaml';",
+		"import cache from './.config/cache.toml';",
+		'console.log(JSON.stringify({ config, cache }));',
+		'',
+	].join('\n'),
+	'plain.ts': "import data from './data.yaml';\nconsole.log(JSON.stringify(data));\n",
+};
+
+export const configDirectoryMerged = {
+	config: { port: 8_080, name: 'local', db: { pool: 20 } },
+	cache: { ttl: 60 },
+};

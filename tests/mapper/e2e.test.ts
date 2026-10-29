@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { configSuffixes } from '../../src/core/formats/index.ts';
+import { configSuffixes, formatExtensions } from '../../src/core/formats/index.ts';
 import { makeProject } from '../helpers.ts';
 
 const root = join(import.meta.dirname, '../..');
@@ -161,16 +161,77 @@ describe('content mapper', () => {
 		expect(result).toEqual({ status: 0, output: [] });
 	});
 
-	it('names the suffixes it handles for a file it does not claim', async () => {
+	it('names the extensions it reads for a file of another extension', async () => {
 		const result = await typeCheck({
-			files: { 'data.yaml': 'a: 1\n', 'index.ts': "import data from './data.yaml';\nexport { data };\n" },
-			mappers: [{ package: 'tyfigo', extensions: ['.yaml'] }],
+			files: { 'data.csv': 'a,1\n', 'index.ts': "import data from './data.csv';\nexport { data };\n" },
+			mappers: [{ package: 'tyfigo', extensions: ['.csv'] }],
 		});
 		expect(result).toEqual({
 			status: 2,
 			output: [
-				`data.yaml(1,1): error tyfigo1005: data.yaml is not a config file. tyfigo handles files ending in ${configSuffixes.join(', ')}`,
+				`data.csv(1,1): error tyfigo1005: data.csv is not a file tyfigo reads. tyfigo handles files ending in ${Object.keys(formatExtensions).join(', ')}`,
 			],
+		});
+	});
+
+	it('types a .config directory file and reports an environment file error at its line when .yaml is claimed', async () => {
+		const result = await typeCheck({
+			files: {
+				'.config/app.yaml': 'port: ${PORT:-3000}\ndb:\n  pool:\n    max: 5\n',
+				'.config/app.production.yaml': 'db:\n  pool:\n    max: twenty\n',
+				'index.ts': [
+					"import config from './.config/app.yaml';",
+					"import production from './.config/app.production.yaml';",
+					'const port: number = config.port;',
+					'const max: number = production.db.pool.max;',
+					'// @ts-expect-error the port is a number',
+					'const wrong: string = config.port;',
+					'export { port, max, wrong };',
+					'',
+				].join('\n'),
+			},
+			mappers: [{ package: 'tyfigo', extensions: [...extensions, '.yaml'] }],
+		});
+		expect(result).toEqual({
+			status: 2,
+			output: [
+				".config/app.production.yaml(3,5): error TS2322: Type 'string' is not assignable to type 'number'.",
+			],
+		});
+	});
+
+	it('types any other file of a claimed extension as plain data', async () => {
+		const result = await typeCheck({
+			files: {
+				'data.yaml': 'port: ${PORT:-3000}\ntags: [a, b]\n',
+				'data.production.yaml': 'other: 1\n',
+				'index.ts': [
+					"import data from './data.yaml';",
+					"import production from './data.production.yaml';",
+					"import config from './app.config.yaml';",
+					'const port: string = data.port;',
+					'const tags: readonly string[] = data.tags;',
+					'const other: number = production.other;',
+					'const n: number = config.port;',
+					'// @ts-expect-error the data is readonly and has strict keys',
+					'const missing = data.missing;',
+					'export { port, tags, other, n, missing };',
+					'',
+				].join('\n'),
+			},
+			mappers: [{ package: 'tyfigo', extensions: [...extensions, '.yaml'] }],
+		});
+		expect(result).toEqual({ status: 0, output: [] });
+	});
+
+	it('reports a parse error in a plain data file', async () => {
+		const result = await typeCheck({
+			files: { 'data.yaml': 'a: [\n', 'index.ts': "import data from './data.yaml';\nexport { data };\n" },
+			mappers: [{ package: 'tyfigo', extensions: ['.yaml'] }],
+		});
+		expect(result).toEqual({
+			status: 2,
+			output: [expect.stringMatching(/^data\.yaml\(2,1\): error tyfigo1001: /u)],
 		});
 	});
 

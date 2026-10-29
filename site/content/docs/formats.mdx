@@ -16,6 +16,22 @@ tyfigo reads seven formats under eight suffixes, since YAML takes both `.config.
 | `.config.properties`          | `.properties` | tyfigo                |
 | `.config.xml`                 | XML           | `@rgrove/parse-xml`   |
 
+In a [`.config` directory](/docs/config-files#a-config-directory), the plain extensions (`.yaml`, `.yml`, `.toml`, `.jsonc`,
+`.json5`, `.ini`, `.properties`, `.xml`) pick the same formats: `.config/app.toml` is TOML. Type-checking those files means
+giving tyfigo the plain extensions in `tsconfig.json`, and then any other file with one of them is typed as plain data with the
+same parser and rules, but without layers or placeholders.
+
+## Plain JSON
+
+tyfigo can't read `.json` files: `.json` is built into TypeScript, so no content mapper can claim `.json`, `.config.json` or
+`.config/<name>.json`. tsc rejects them in `tsconfig.json`:
+
+```txt
+error TS18066: Content mapper file extension '.config.json' is a built-in extension and cannot be registered by a content mapper.
+```
+
+Rename the file to `.config.jsonc` (or `.config/<name>.jsonc`) instead. Every JSON file is valid JSONC, so nothing else changes.
+
 Every parser keeps the position of each key and value, which is how errors point at a line and column. An empty file is `{}`.
 A duplicate key is an error in every format. The typing rules on [Type checking](/docs/type-checking) apply to all of them:
 strings, numbers and booleans are widened, arrays are `readonly T[]`, and everything is `readonly`.

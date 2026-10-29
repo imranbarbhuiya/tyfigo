@@ -1,4 +1,4 @@
-import { configSuffixes, formatProblems } from '../core/index.ts';
+import { formatProblems } from '../core/index.ts';
 import { load } from '../runtime/load.ts';
 
 import type { LoadOptions, LoadResult, LoadTarget } from '../runtime/load.ts';
@@ -20,11 +20,6 @@ export interface TyfigoPluginOptions {
 	 */
 	readonly runtime?: string | undefined;
 }
-
-export const configFilePattern = new RegExp(
-	`(?:${configSuffixes.map((suffix) => suffix.replaceAll('.', String.raw`\.`)).join('|')})$`,
-	'u',
-);
 
 /**
  * Generates the module for a config import and throws one error listing every problem, which fails the build.

@@ -4,7 +4,8 @@ description: Preload tyfigo/bun for bun run, bun test and Bun.build.
 ---
 
 Bun imports `.toml`, `.yaml` and a few other formats natively, without layering or placeholders. Preloading `tyfigo/bun`
-registers a Bun plugin that takes over `*.config.*` files:
+registers a Bun plugin that takes over `*.config.*` files and the files of a
+[`.config` directory](/docs/config-files#a-config-directory), and leaves every other `.yaml` or `.toml` file to Bun:
 
 ```toml title="bunfig.toml"
 preload = ["tyfigo/bun"]
