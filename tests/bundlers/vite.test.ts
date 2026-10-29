@@ -1,4 +1,4 @@
-import { realpath } from 'node:fs/promises';
+import { realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { build, createServer } from 'vite';
@@ -77,7 +77,7 @@ describe('vite', () => {
 		await expect(buildVite(fixture, 'plain', true)).rejects.toThrow(/data\.yaml/u);
 	});
 
-	it('loads the server module by path and watches the layer and .env files in dev SSR', async () => {
+	it('loads the server module by path and watches the layer and .env files in dev SSR, including ones added later', async () => {
 		const fixture = await realpath(await makeFixture());
 		const server = await createServer({
 			root: fixture,
@@ -93,16 +93,50 @@ describe('vite', () => {
 			expect(result?.code).toContain(
 				`.resolveConfigModule)(${JSON.stringify(join(fixture, 'server.config.yaml'))}, { environment: "production" })`,
 			);
-			expect([...server.environments.ssr.pluginContainer.watchFiles]).toEqual(
-				expect.arrayContaining([
-					join(fixture, 'server.production.config.yaml'),
-					join(fixture, '.env.production'),
-				]),
+			expect([...server.environments.ssr.pluginContainer.watchFiles]).toContain(
+				join(fixture, 'server.production.config.yaml'),
 			);
+
+			const module = server.environments.ssr.moduleGraph.getModuleById(join(fixture, 'server.config.yaml'));
+			expect(module?.transformResult).not.toBeNull();
+			const envFile = join(fixture, '.env.production');
+			await writeFile(envFile, 'PORT=8080\n');
+			server.watcher.emit('add', envFile);
+			expect(module?.transformResult).toBeNull();
 
 			const client = await server.environments.client.transformRequest(join(fixture, 'client.config.yaml'));
 			expect(client?.code).toContain('dark');
 			expect(client?.code).not.toContain('local-client');
+		} finally {
+			await server.close();
+		}
+	});
+
+	it('serves a client config in dev when the mode has no environment file, and reloads when one is added', async () => {
+		const fixture = await realpath(await makeFixture());
+		const server = await createServer({
+			root: fixture,
+			configFile: false,
+			envFile: false,
+			logLevel: 'silent',
+			mode: 'development',
+			server: { port: 0, ws: false },
+			plugins: [tyfigo({ runtime: runtime.path })],
+		});
+		await server.listen();
+		try {
+			const url = server.resolvedUrls!.local[0]!;
+			expect((await fetch(new URL('client.js', url))).status).toBe(200);
+			const response = await fetch(new URL('client.config.yaml?import', url));
+			expect(response.status).toBe(200);
+			expect(await response.text()).toContain('light');
+
+			const module = server.environments.client.moduleGraph.getModuleById(join(fixture, 'client.config.yaml'));
+			expect(module?.transformResult).not.toBeNull();
+			const file = join(fixture, 'client.development.config.yaml');
+			await writeFile(file, 'theme: dark\n');
+			server.watcher.emit('add', file);
+			expect(module?.transformResult).toBeNull();
 		} finally {
 			await server.close();
 		}

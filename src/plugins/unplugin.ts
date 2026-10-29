@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+
 import { createUnplugin } from 'unplugin';
 
 import { findNodeOnlyImports, isServerPlatform, loadConfigImport, tyfigoImportPattern } from './shared.ts';
@@ -7,6 +9,7 @@ import { configPathPattern } from '../core/index.ts';
 import type { LoadOptions } from '../runtime/load.ts';
 import type { TyfigoPluginOptions, WebpackLikeCompiler } from './shared.ts';
 import type { UnpluginBuildContext, UnpluginFactory } from 'unplugin';
+import type { ViteDevServer } from 'vite';
 
 export type { TyfigoPluginOptions } from './shared.ts';
 
@@ -21,6 +24,8 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 	let viteCommand: string | undefined;
 	let viteMode: string | undefined;
 	let rolldownPlatform: string | undefined;
+	let viteServer: ViteDevServer | undefined;
+	const missingLayers = new Map<string, Set<string>>();
 
 	const detect = (
 		context: UnpluginBuildContext,
@@ -64,7 +69,12 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 						options.environment ?? (target === 'server' && detected.bundle ? undefined : detected.mode),
 					runtime: options.runtime,
 				});
-				for (const file of result.watchFiles) this.addWatchFile(file);
+				for (const file of result.watchFiles) {
+					if (viteServer && !existsSync(file)) {
+						missingLayers.set(file, (missingLayers.get(file) ?? new Set()).add(id));
+						viteServer.watcher.add(file);
+					} else this.addWatchFile(file);
+				}
 				return { code: result.code, moduleType: 'js' };
 			},
 		},
@@ -83,6 +93,21 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 			configResolved(config) {
 				viteCommand = config.command;
 				viteMode = config.mode;
+			},
+			configureServer(server) {
+				viteServer = server;
+				server.watcher.on('add', (file) => {
+					const ids = missingLayers.get(file);
+					if (!ids) return;
+					missingLayers.delete(file);
+					for (const environment of Object.values(server.environments)) {
+						for (const id of ids) {
+							const module = environment.moduleGraph.getModuleById(id);
+							if (module) environment.moduleGraph.invalidateModule(module);
+						}
+					}
+					server.ws.send({ type: 'full-reload' });
+				});
 			},
 		},
 		rolldown: {
