@@ -13,16 +13,18 @@ export default defineConfig({
 ```
 
 The environment is Vite's mode: `development` for `vite`, `production` for `vite build`, `test` under Vitest, or whatever
-`--mode` says. Pass `tyfigo({ environment })` to override it.
+`--mode` says. An SSR build is the exception: it picks the environment by `NODE_ENV` when the server starts. Pass
+`tyfigo({ environment })` to fix it for both.
 
 ## Client and server
 
 The plugin picks the target per module environment:
 
 - **Client code** gets the base and environment files inlined, and a placeholder fails the build. See [Browser builds](/docs/browser-builds).
-- **SSR code** (`vite build --ssr`, or a server environment) inlines the layer files of the build's mode
-  ([Server bundles](/docs/browser-builds#server-bundles)) and reads `.env` files and environment variables when the server
-  starts. In the dev server it resolves the config from disk and watches the layer and `.env` files.
+- **SSR code** (`vite build --ssr`, or a server environment) inlines the layer files of every environment, picks them by
+  `NODE_ENV` and reads `.env` files and environment variables when the server starts
+  ([Server bundles](/docs/browser-builds#server-bundles)). In the dev server it resolves the config of the mode from disk and
+  watches the layer and `.env` files.
 
 The [vite example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/vite) keeps the two apart with two files:
 

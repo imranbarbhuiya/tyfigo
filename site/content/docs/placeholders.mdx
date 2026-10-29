@@ -72,8 +72,8 @@ tyfigo never writes `process.env`. `.env` files only supply values to placeholde
 
 <Callout title="Bundled servers">
 	A server bundle built with a bundler plugin reads `.env` files from the working directory when it starts, not from the
-	machine that built it. Its environment, and so its layers and `.env.<env>` files, is fixed when it builds, and `NODE_ENV`
-	at run time doesn't change it. See [Server bundles](/docs/browser-builds#server-bundles), and
+	machine that built it. It picks its layers and `.env.<env>` files by `NODE_ENV` when it starts, unless the plugin's
+	`environment` option fixed them. See [Server bundles](/docs/browser-builds#server-bundles), and
 	[Browser builds](/docs/browser-builds) for what client bundles do.
 </Callout>
 

@@ -6,12 +6,13 @@ import type { LoadOptions, LoadResult, LoadTarget } from '../runtime/load.ts';
 export interface TyfigoPluginOptions {
 	/**
 	 * Overrides the detected target. `browser` inlines the base and environment files and fails on placeholders and on imports of
-	 * `loadEnv` and the other exports that need Node.js. `server` inlines the base, environment and local files of the build's
-	 * environment and reads `.env` files and environment variables when the bundle runs.
+	 * `loadEnv` and the other exports that need Node.js. `server` inlines the base, local and every environment's files, and picks
+	 * the environment's files and reads `.env` files and environment variables when the bundle runs.
 	 */
 	readonly target?: LoadTarget | undefined;
 	/**
-	 * The environment name. Defaults to the bundler's mode where it has one (Vite, webpack, Rspack, Rsbuild), otherwise `NODE_ENV`.
+	 * The environment name. A server bundle reads `NODE_ENV` when it starts unless this is set, which fixes it. Browser builds
+	 * and the Vite dev server default to the bundler's mode where it has one (Vite, webpack, Rspack, Rsbuild), otherwise `NODE_ENV`.
 	 */
 	readonly environment?: string | undefined;
 	/**

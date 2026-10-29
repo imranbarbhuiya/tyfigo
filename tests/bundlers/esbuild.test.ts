@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 
 import { build } from 'esbuild';
 import { build as tsup } from 'tsup';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	browserPlaceholderError,
@@ -22,7 +22,12 @@ import type { Entry } from './helpers.ts';
 
 const runtime = useRuntime();
 
-const buildEsbuild = async (fixture: string, entry: Entry, platform: 'browser' | 'node') => {
+const buildEsbuild = async (
+	fixture: string,
+	entry: Entry,
+	platform: 'browser' | 'node',
+	environment: string | false = 'production',
+) => {
 	const outfile = join(fixture, 'dist', `${entry}.mjs`);
 	await build({
 		entryPoints: [join(fixture, `${entry}.js`)],
@@ -32,7 +37,7 @@ const buildEsbuild = async (fixture: string, entry: Entry, platform: 'browser' |
 		outfile,
 		external: [runtime.path],
 		logLevel: 'silent',
-		plugins: [tyfigo({ environment: 'production', runtime: runtime.path })],
+		plugins: [tyfigo({ environment: environment || undefined, runtime: runtime.path })],
 	});
 	return outfile;
 };
@@ -59,7 +64,20 @@ describe('esbuild', () => {
 
 	it('uses the server target for platform node', async () => {
 		const fixture = await makeFixture();
-		await expectServerOutput(await buildEsbuild(fixture, 'server', 'node'), fixture);
+		await expectServerOutput(await buildEsbuild(fixture, 'server', 'node'), fixture, 'production');
+	});
+
+	it('picks the environment when a server bundle built without one starts', async () => {
+		const fixture = await makeFixture();
+		await expectServerOutput(await buildEsbuild(fixture, 'server', 'node', false), fixture);
+	});
+
+	it('ignores NODE_ENV at build time for a server bundle built without an environment', async () => {
+		const fixture = await makeFixture();
+		vi.stubEnv('NODE_ENV', 'staging');
+		const file = await buildEsbuild(fixture, 'server', 'node', false);
+		vi.unstubAllEnvs();
+		await expectServerOutput(file, fixture);
 	});
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {
@@ -74,7 +92,7 @@ describe('tsup', () => {
 
 	it('uses the server target for platform node', async () => {
 		const fixture = await makeFixture();
-		await expectServerOutput(await buildTsup(fixture, 'server', 'node'), fixture);
+		await expectServerOutput(await buildTsup(fixture, 'server', 'node'), fixture, 'production');
 	});
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {

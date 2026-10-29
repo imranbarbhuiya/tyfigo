@@ -1,10 +1,22 @@
-import { statSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { Effect } from 'effect';
 
 export const isFile = (path: string): Effect.Effect<boolean> =>
 	Effect.sync(() => statSync(path, { throwIfNoEntry: false })?.isFile() ?? false);
+
+/**
+ * The names of the entries in `directory`, or none when it cannot be read.
+ */
+export const listDirectory = (directory: string): Effect.Effect<readonly string[]> =>
+	Effect.sync(() => {
+		try {
+			return readdirSync(directory);
+		} catch {
+			return [];
+		}
+	});
 
 /**
  * The nearest directory at or above `directory` that has a `package.json`.

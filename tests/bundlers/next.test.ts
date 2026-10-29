@@ -98,7 +98,9 @@ describe.each([
 		expect(await nextBuild(fixture, flags)).toBe('');
 
 		const html = await readFile(join(fixture, '.next/server/app/index.html'), 'utf8');
-		expect(html).toContain(quoted({ port: 3_000, secret: 'from-build-machine', name: 'local-server' }));
+		expect(html).toContain(
+			quoted({ port: 3_000, secret: 'from-build-machine', name: 'local-server', tier: 'production' }),
+		);
 		expect(html).toContain(quoted(clientServerRender));
 
 		const client = await readTree(join(fixture, '.next/static'));

@@ -68,7 +68,7 @@ describe('rollup', () => {
 
 	it('bundles every layer and reads .env files when the bundle runs with target server', async () => {
 		const fixture = await makeFixture();
-		await expectServerOutput(await buildRollup(fixture, 'server', 'server'), fixture);
+		await expectServerOutput(await buildRollup(fixture, 'server', 'server'), fixture, 'production');
 	});
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {
@@ -83,7 +83,7 @@ describe('rolldown', () => {
 
 	it('uses the server target for platform node', async () => {
 		const fixture = await makeFixture();
-		await expectServerOutput(await buildRolldown(fixture, 'server', 'node'), fixture);
+		await expectServerOutput(await buildRolldown(fixture, 'server', 'node'), fixture, 'production');
 	});
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {
@@ -98,7 +98,7 @@ describe('tsdown', () => {
 
 	it('uses the server target for platform node', async () => {
 		const fixture = await makeFixture();
-		await expectServerOutput(await buildTsdown(fixture, 'server', 'node'), fixture);
+		await expectServerOutput(await buildTsdown(fixture, 'server', 'node'), fixture, 'production');
 	});
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {

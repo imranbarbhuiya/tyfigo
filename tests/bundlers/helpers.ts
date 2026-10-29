@@ -101,8 +101,9 @@ export const fixtureFiles: Record<string, string> = {
 	'client.config.yaml': 'name: base\ntheme: light\n',
 	'client.production.config.yaml': 'theme: dark\n',
 	'client.local.config.yaml': 'name: local-client\n',
-	'server.config.yaml': 'port: ${PORT:-3000}\nsecret: ${SECRET}\nname: base\n',
-	'server.production.config.yaml': 'name: production\n',
+	'server.config.yaml': 'port: ${PORT:-3000}\nsecret: ${SECRET}\nname: base\ntier: base\n',
+	'server.production.config.yaml': 'name: production\ntier: production\n',
+	'server.staging.config.yaml': 'tier: staging\n',
 	'server.local.config.yaml': 'name: local-server\n',
 	'bad.config.yaml': 'url: ${API_URL}\n',
 	'client.js': "import config from './client.config.yaml';\n\nconsole.log(JSON.stringify(config));\n",
@@ -124,22 +125,37 @@ export const expectBrowserOutput = async (file: string) => {
 };
 
 /**
- * Copies a server bundle to a directory unrelated to the build, with its own `.env` files, runs it with Node.js and asserts the
- * config it prints.
+ * Runs a bundle with Node.js in `cwd` with only `NODE_ENV` set, and returns the config it prints.
  */
-export const expectServerOutput = async (file: string, fixture: string) => {
+export const runBundle = async (file: string, cwd: string, nodeEnv?: string): Promise<unknown> => {
+	const { stdout } = await promisify(execFile)(process.execPath, [file], {
+		cwd,
+		env: (nodeEnv === undefined ? {} : { NODE_ENV: nodeEnv }) as NodeJS.ProcessEnv,
+	});
+	return JSON.parse(stdout.trim().split('\n').at(-1) ?? '');
+};
+
+/**
+ * Copies a server bundle to a directory unrelated to the build, with its own `.env` files, runs it with Node.js under
+ * `NODE_ENV=production` and with no environment, and asserts the config it prints. Pass the `environment` the bundle was built
+ * with when the build fixed it.
+ */
+export const expectServerOutput = async (file: string, fixture: string, environment?: string) => {
 	const output = await readFile(file, 'utf8');
 	expect(output).not.toContain(JSON.stringify(fixture).slice(0, -1));
 	expect(output).toContain('local-server');
+	if (environment === undefined) expect(output).toContain('staging');
+	else expect(output).not.toContain('staging');
 
 	const deploy = await makeProject({ '.env': 'SECRET=deployed', '.env.production': 'PORT=8080' });
 	await copyFile(file, join(deploy, basename(file)));
-	const { stdout } = await promisify(execFile)(process.execPath, [basename(file)], { cwd: deploy });
-	expect(JSON.parse(stdout.trim().split('\n').at(-1) ?? '')).toEqual({
-		port: 8_080,
-		secret: 'deployed',
-		name: 'local-server',
-	});
+	const production = { port: 8_080, secret: 'deployed', name: 'local-server', tier: 'production' };
+	expect(await runBundle(basename(file), deploy, 'production')).toEqual(production);
+	expect(await runBundle(basename(file), deploy)).toEqual(
+		environment === undefined
+			? { port: 3_000, secret: 'deployed', name: 'local-server', tier: 'base' }
+			: production,
+	);
 };
 
 export const browserPlaceholderError = /bad\.config\.yaml:1:6 - 'url' uses an environment placeholder/u;

@@ -29,14 +29,14 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 	const detect = (
 		context: UnpluginBuildContext,
 		loadOptions: { readonly ssr?: boolean } | undefined,
-	): Pick<LoadOptions, 'target' | 'bundle' | 'environment'> => {
+	): Pick<LoadOptions, 'target' | 'bundle'> & { readonly mode?: string | undefined } => {
 		const native = context.getNativeBuildContext?.();
 		if (native?.framework === 'webpack' || native?.framework === 'rspack') {
 			const compiler = native.compiler as WebpackLikeCompiler;
 			return {
 				target: isServerPlatform(compiler.platform) ? 'server' : 'browser',
 				bundle: true,
-				environment: webpackMode(compiler),
+				mode: webpackMode(compiler),
 			};
 		}
 		if (native?.framework === 'esbuild') {
@@ -47,7 +47,7 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 			return {
 				target: (consumer === undefined ? loadOptions?.ssr : consumer === 'server') ? 'server' : 'browser',
 				bundle: viteCommand === 'build',
-				environment: viteMode,
+				mode: viteMode,
 			};
 		}
 		return { target: rolldownPlatform === 'node' ? 'server' : 'browser', bundle: true };
@@ -60,10 +60,12 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 			filter: { id: configFilePattern },
 			handler(id, loadOptions?: { readonly ssr?: boolean }) {
 				const detected = detect(this, loadOptions);
+				const target = options.target ?? detected.target;
 				const result = loadConfigImport(id, {
-					...detected,
-					target: options.target ?? detected.target,
-					environment: options.environment ?? detected.environment,
+					target,
+					bundle: detected.bundle,
+					environment:
+						options.environment ?? (target === 'server' && detected.bundle ? undefined : detected.mode),
 					runtime: options.runtime,
 				});
 				for (const file of result.watchFiles) this.addWatchFile(file);

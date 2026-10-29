@@ -4,7 +4,8 @@ description: Use tyfigo/webpack, tyfigo/rspack and tyfigo/rsbuild.
 ---
 
 The target follows the compiler's platform (`target: 'node…'` is a server build, `web` a [browser build](/docs/browser-builds)),
-and the environment is the compiler's `mode`.
+and the environment of a browser build is the compiler's `mode`. A server build picks it by `NODE_ENV` when it starts
+([Server bundles](/docs/browser-builds#server-bundles)). Pass `environment` to fix it for both.
 
 ## webpack
 

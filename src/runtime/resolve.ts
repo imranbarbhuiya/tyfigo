@@ -5,7 +5,14 @@ import { Data } from 'effect';
 
 import { configSource } from './source.ts';
 
-import { formatProblems, pathKey, resolveConfigSourcesSync, resolveConfigSync, SourceIndex } from '../core/index.ts';
+import {
+	formatProblems,
+	pathKey,
+	processEnv,
+	resolveConfigSourcesSync,
+	resolveConfigSync,
+	SourceIndex,
+} from '../core/index.ts';
 
 import type { LayerSource, Problem, ResolvedConfig } from '../core/index.ts';
 import type { ConfigSource } from './source.ts';
@@ -81,23 +88,36 @@ const toModule = (result: ResolvedConfig): unknown => {
 export const resolveConfigModule = (file: string, options: ConfigModuleOptions = {}): unknown =>
 	toModule(resolveConfigSync(file, { environment: options.environment }));
 
+export interface BundledLayer extends LayerSource {
+	/**
+	 * The environment an `environment` or `environment-local` layer belongs to.
+	 */
+	readonly environment?: string | undefined;
+}
+
 /**
  * The layer files a bundled server module carries, with paths relative to the project root of the machine that built it.
  */
 export interface BundledConfig {
 	readonly file: string;
+	/**
+	 * The environment the bundle was built for, which wins over `NODE_ENV`.
+	 */
 	readonly environment?: string | undefined;
-	readonly layers: readonly LayerSource[];
+	readonly layers: readonly BundledLayer[];
 }
 
 /**
- * {@link resolveConfigModule} for a bundled server module: merges the layers inlined at build time with the `.env` files found
- * from `process.cwd()` and the environment variables.
+ * {@link resolveConfigModule} for a bundled server module: picks the inlined layers of the environment (`NODE_ENV` unless the
+ * bundle fixes it) and merges them with the `.env` files found from `process.cwd()` and the environment variables.
  */
-export const resolveBundledConfigModule = (bundle: BundledConfig): unknown =>
-	toModule(
-		resolveConfigSourcesSync(bundle.file, bundle.layers, {
-			environment: bundle.environment,
-			envFrom: join(process.cwd(), basename(bundle.file)),
-		}),
+export const resolveBundledConfigModule = (bundle: BundledConfig): unknown => {
+	const environment = bundle.environment ?? (processEnv().NODE_ENV || undefined);
+	return toModule(
+		resolveConfigSourcesSync(
+			bundle.file,
+			bundle.layers.filter((layer) => layer.environment === undefined || layer.environment === environment),
+			{ environment, envFrom: join(process.cwd(), basename(bundle.file)) },
+		),
 	);
+};

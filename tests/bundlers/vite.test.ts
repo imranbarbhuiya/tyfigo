@@ -2,7 +2,7 @@ import { realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { build, createServer } from 'vite';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	browserPlaceholderError,
@@ -18,14 +18,14 @@ import type { Entry } from './helpers.ts';
 
 const runtime = useRuntime();
 
-const buildVite = async (fixture: string, entry: Entry, ssr: boolean) => {
+const buildVite = async (fixture: string, entry: Entry, ssr: boolean, environment?: string) => {
 	const outDir = join(fixture, 'dist');
 	await build({
 		root: fixture,
 		configFile: false,
 		envFile: false,
 		logLevel: 'silent',
-		plugins: [tyfigo({ runtime: runtime.path })],
+		plugins: [tyfigo({ environment, runtime: runtime.path })],
 		build: {
 			outDir,
 			minify: false,
@@ -48,6 +48,19 @@ describe('vite', () => {
 	it('uses the bundled server target for an SSR build', async () => {
 		const fixture = await makeFixture();
 		await expectServerOutput(await buildVite(fixture, 'server', true), fixture);
+	});
+
+	it('ignores the mode and NODE_ENV at build time for an SSR build', async () => {
+		const fixture = await makeFixture();
+		vi.stubEnv('NODE_ENV', 'staging');
+		const file = await buildVite(fixture, 'server', true);
+		vi.unstubAllEnvs();
+		await expectServerOutput(file, fixture);
+	});
+
+	it('keeps the environment option of an SSR build', async () => {
+		const fixture = await makeFixture();
+		await expectServerOutput(await buildVite(fixture, 'server', true, 'production'), fixture, 'production');
 	});
 
 	it('fails on a placeholder in a client build', async () => {

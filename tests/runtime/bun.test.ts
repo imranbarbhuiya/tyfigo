@@ -118,4 +118,41 @@ describe('bun --preload tyfigo/bun', () => {
 		expect(result.stderr).toBe('');
 		expect(JSON.parse(result.stdout)).toEqual(merged);
 	});
+
+	it('picks the environment when a server Bun.build bundle starts, unless the plugin fixes it', async () => {
+		const root = await makeProject({
+			...fixture,
+			'config/app.staging.config.yaml': 'db:\n  pool: 2\n',
+			'build.ts': [
+				`import { tyfigo } from ${JSON.stringify(preload)};`,
+				'const environment = process.argv[2];',
+				"await Bun.build({ entrypoints: ['./main.ts'], target: 'bun', outdir: environment ? 'fixed' : 'out', plugins: [tyfigo({ environment })] });",
+				'',
+			].join('\n'),
+		});
+		vi.stubEnv('NODE_ENV', 'staging');
+		expect(run('bun', ['build.ts'], root).status).toBe(0);
+		expect(run('bun', ['build.ts', 'staging'], root).status).toBe(0);
+		expect(await readFile(join(root, 'out/main.js'), 'utf8')).not.toContain(root);
+		await rm(join(root, 'config'), { recursive: true });
+
+		const portsAndPools = (environment: string) => {
+			vi.stubEnv('NODE_ENV', environment);
+			return ['out', 'fixed'].map((directory) => {
+				const result = run('bun', [`${directory}/main.js`], root);
+				expect(result.stderr).toBe('');
+				const { config } = JSON.parse(result.stdout) as typeof merged;
+				return [config.port, config.db.pool];
+			});
+		};
+		// Bun itself loads `.env.production` into the environment under NODE_ENV=production, so the fixed bundle sees PORT=9090 too.
+		expect(portsAndPools('production')).toEqual([
+			[9_090, 20],
+			[9_090, 2],
+		]);
+		expect(portsAndPools('test')).toEqual([
+			[8_080, 5],
+			[8_080, 2],
+		]);
+	});
 });
