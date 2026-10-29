@@ -199,10 +199,26 @@ tyfigo reads seven formats under eight suffixes, since YAML takes both `.config.
 | `.config.properties`          | `.properties` |
 | `.config.xml`                 | XML           |
 
+Plain `.json` isn't supported: it's a built-in TypeScript extension, so no content mapper can claim `.json`, `.config.json` or
+`.config/<name>.json` (tsc reports `TS18066`). Rename the file to `.config.jsonc`; every JSON file is valid JSONC.
+
+### A `.config` directory
+
+Config files can also live in a `.config` folder with plain extensions: `.config/app.yaml` is a base file and
+`.config/app.production.yaml`, `.config/app.local.yaml` and `.config/app.production.local.yaml` are its layers. Every runtime and
+bundler loads them by path with no setup, and `.yaml` files elsewhere are left alone. `.env` files are read from the folder
+that contains `.config`.
+
+Type-checking them is opt-in: add the plain extensions you use to tyfigo's `extensions` (`".yaml"` next to the `.config.*`
+suffixes) and include `".config/*"`. tyfigo then owns that extension, so it can't be combined with another mapper (such as
+Motherload) for it, and every other `.yaml` file is typed as plain data, with no layers or placeholders. See
+[A `.config` directory](https://tyfigo.vercel.app/docs/config-files#a-config-directory) and the
+[config-dir example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/config-dir).
+
 ## tyfigo and Motherload
 
 [Motherload](https://motherload.dev) also imports data files through TypeScript 7.1 content mappers, but it is a general data
-loader: import any `.yaml`, `.toml`, `.csv`, `.md` or other data file and get its contents, typed as `as const` would type them. tyfigo only claims `*.config.*` files and is for the settings your app reads at start-up: widened
+loader: import any `.yaml`, `.toml`, `.csv`, `.md` or other data file and get its contents, typed as `as const` would type them. tyfigo claims `*.config.*` files (and, opt-in, a `.config` folder) and is for the settings your app reads at start-up: widened
 types, layered environment files checked against the base, placeholders and schema validation. They can share a project,
 since TypeScript gives each extension one owner and the longest suffix wins, so tyfigo can own `.config.yaml` while
 Motherload owns `.yaml`. See [tyfigo and Motherload](https://tyfigo.vercel.app/docs#tyfigo-and-motherload).

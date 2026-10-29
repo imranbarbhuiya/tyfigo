@@ -15,7 +15,7 @@ tyfigo collects every problem in a config and its layers and reports them togeth
 | `duplicate-key`       | `tyfigo1002` | A key appears twice                                                                        |
 | `file-not-found`      |              | The imported config file doesn't exist                                                     |
 | `read-error`          |              | A config or `.env` file exists but can't be read                                           |
-| `unsupported-file`    | `tyfigo1005` | The file name doesn't end in a suffix tyfigo handles                                       |
+| `unsupported-file`    | `tyfigo1005` | The file isn't a config file, or (in tsc) its extension isn't one tyfigo reads             |
 | `missing-variable`    |              | A `${VAR}` or `${VAR:?message}` placeholder has no value                                   |
 | `invalid-placeholder` | `tyfigo1007` | A placeholder such as `${1PORT}` or an unclosed `${PORT`                                   |
 | `unknown-key`         | `TS2353`     | An environment or local file sets a key the base file doesn't have                         |

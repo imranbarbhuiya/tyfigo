@@ -57,7 +57,7 @@ const env = loadEnv(z.object({ NODE_ENV: z.enum(['development', 'production', 't
 |            | Motherload                                                                               | tyfigo                                                                                            |
 | ---------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Purpose    | A general data loader: import a data file and get its contents                           | Application config for the current environment                                                    |
-| Files      | Any `.toml`, `.yaml`, `.jsonc`, `.json5`, `.csv`, `.tsv`, `.md`, `.txt`, `.env` you list | Only `*.config.{yaml,yml,toml,jsonc,json5,ini,properties,xml}`                                    |
+| Files      | Any `.toml`, `.yaml`, `.jsonc`, `.json5`, `.csv`, `.tsv`, `.md`, `.txt`, `.env` you list | `*.config.{yaml,yml,toml,jsonc,json5,ini,properties,xml}` and the files of a `.config` folder     |
 | Types      | As `as const` would type the data (literal types)                                        | Widened (`number`, `string`, `readonly string[]`), so other environments can change values        |
 | Layering   | One file, one module                                                                     | Base, environment and local files merged; overrides checked against the base                      |
 | `.env`     | Importing a `.env` file sets its variables on `process.env`, typed as strings            | `.env` files supply values to `${VAR}` placeholders and `loadEnv`; `process.env` is never written |
@@ -79,6 +79,9 @@ They can share a project. TypeScript gives each extension one owner and the long
 
 Use Motherload for content (a list of team members, a CSV of prices, Markdown posts) and tyfigo for the settings your app
 reads at start-up.
+
+The one layout that doesn't combine with Motherload is a [`.config` directory](/docs/config-files#a-config-directory): typing
+`.config/app.yaml` means giving tyfigo `.yaml` itself, and an extension can only have one mapper.
 
 ## Requirements
 

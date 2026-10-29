@@ -6,8 +6,9 @@ icon: Layers
 
 ## File names
 
-tyfigo only claims files whose name ends in `.config.<ext>`: `app.config.yaml`, `server.config.toml`, `jvm.config.properties`.
-A plain `data.yaml` is left alone, so it can belong to another content mapper or bundler loader.
+tyfigo claims files whose name ends in `.config.<ext>`: `app.config.yaml`, `server.config.toml`, `jvm.config.properties`, and
+the files of a [`.config` directory](#a-config-directory). A plain `data.yaml` anywhere else is left alone, so it can belong
+to another content mapper or bundler loader.
 
 The part before `.config` is the stem. Every file that shares a stem is a layer of the same config:
 
@@ -37,6 +38,86 @@ Environment files sit next to the base file. Local files are looked for next to 
 *.local.config.*
 .env.local
 ```
+
+## A `.config` directory
+
+Instead of the `.config` suffix, you can keep config files in a folder named `.config`. A file directly inside it, with one of
+the [format](/docs/formats) extensions (`.yaml`, `.yml`, `.toml`, `.jsonc`, `.json5`, `.ini`, `.properties`, `.xml`), is a
+config file. The layers follow the same naming, without the `.config` part:
+
+| File                                | Layer             |
+| ----------------------------------- | ----------------- |
+| `.config/app.yaml`                  | base              |
+| `.config/app.production.yaml`       | environment       |
+| `.config/app.local.yaml`            | local             |
+| `.config/app.production.local.yaml` | environment-local |
+
+```ts title="src/main.ts"
+import config from '../.config/app.yaml';
+```
+
+- Environment files sit next to the base file, in the same `.config` folder.
+- Local files are looked for next to the base file first, then in the project root's `.config` folder.
+- `.env` files are looked for in the folder that contains `.config` first, then in the project root, so `.env` sits where it
+  usually does, not inside `.config`.
+- Files in folders below `.config` (`.config/db/app.yaml`) are not config files.
+
+### Running it
+
+Nothing to set up. `tyfigo/register`, `tyfigo/bun`, `tyfigo/jest` (with the pattern on [Jest](/docs/runtimes/jest)) and every
+bundler plugin load `.config/*.yaml` and the other extensions by their path. A `.yaml` file anywhere else is still left alone:
+Bun loads it with its own loader, Node.js still refuses it, and bundlers handle it as they did before.
+
+### Type checking is opt-in
+
+TypeScript picks a content mapper by extension, and `.config/app.yaml` ends in `.yaml`, not `.config.yaml`. To type it, give
+tyfigo the plain extensions you use in `.config` as well, and include the folder as `.config/*`:
+
+```jsonc title="tsconfig.json"
+{
+	"contentMappers": [
+		{
+			"package": "tyfigo",
+			"extensions": [
+				".config.yaml",
+				".config.yml",
+				".config.toml",
+				".config.jsonc",
+				".config.json5",
+				".config.ini",
+				".config.properties",
+				".config.xml",
+				".yaml",
+			],
+		},
+	],
+	"include": ["src", ".config/*"],
+}
+```
+
+TypeScript skips folders whose name starts with a dot when it expands a folder in `include`, so `".config"` alone only checks
+the files your code imports. `".config/*"` names the files and checks the environment and local files too.
+
+<Callout type="warn" title="tyfigo then owns every .yaml file">
+	Each extension has one content mapper, so you can't also give `.yaml` to another mapper, such as
+	[Motherload](/docs#tyfigo-and-motherload). Every other `.yaml` file your code imports, such as `fixtures.yaml`, becomes
+	**plain data**: typed widened and `readonly` like a base file, with parse errors reported, but no layers, no placeholders
+	(`${PORT:-3000}` is just a `string`) and no `.env`. tyfigo types those files but doesn't load them at run time; Bun
+	imports them natively, and elsewhere they need their own loader.
+</Callout>
+
+```yaml title="fixtures.yaml"
+users:
+  - name: Ada
+    admin: true
+```
+
+```ts
+import type fixtures from '../fixtures.yaml';
+// const fixtures: { readonly users: readonly { readonly name: string; readonly admin: boolean }[] }
+```
+
+The [config-dir example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/config-dir) runs this setup on Node.js.
 
 ## The environment name
 
