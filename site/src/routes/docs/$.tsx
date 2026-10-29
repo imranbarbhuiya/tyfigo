@@ -15,7 +15,7 @@ import { Suspense, use } from 'react';
 
 import { useMDXComponents } from '@/components/mdx';
 import { baseOptions } from '@/lib/layout.shared';
-import { getPageMarkdownUrl, githubUrl, site } from '@/lib/shared';
+import { getPageImageUrl, getPageMarkdownUrl, githubUrl, ogMeta, site } from '@/lib/shared';
 import { docs, source } from '@/lib/source';
 
 const loadPage = createServerFn({ method: 'GET' })
@@ -30,6 +30,7 @@ const loadPage = createServerFn({ method: 'GET' })
 			title: page.data.title,
 			description: page.data.description,
 			markdownUrl: getPageMarkdownUrl(page).url,
+			imageUrl: getPageImageUrl(page.slugs),
 			pageTree: await source.serializePageTree(source.getPageTree()),
 		};
 	});
@@ -46,6 +47,11 @@ export const Route = createFileRoute('/docs/$')({
 			? [
 					{ title: `${loaderData.title} | ${site.name}` },
 					...(loaderData.description ? [{ name: 'description', content: loaderData.description }] : []),
+					...ogMeta({
+						title: `${loaderData.title} | ${site.name}`,
+						description: loaderData.description,
+						image: loaderData.imageUrl,
+					}),
 				]
 			: [],
 	}),

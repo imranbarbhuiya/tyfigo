@@ -217,7 +217,7 @@
 	},
 	"lint-staged": {
 		"*": "oxfmt --no-error-on-unmatched-pattern",
-		"*.{js,mjs,cjs,ts,mts,cts}": "oxlint --fix"
+		"*.{js,mjs,cjs,ts,mts,cts}": "oxlint --fix --no-error-on-unmatched-pattern"
 	},
 	"commitlint": {
 		"extends": [

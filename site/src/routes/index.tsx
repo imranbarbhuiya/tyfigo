@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { HomeLayout } from 'fumadocs-ui/layouts/home';
 
+import { Logo, targets } from '@/components/logos';
 import { baseOptions } from '@/lib/layout.shared';
 import { githubUrl, site } from '@/lib/shared';
 
@@ -21,18 +22,6 @@ const layers = [
 	},
 	{ file: '.env', note: 'values only', lines: ['PORT=8080'] },
 ];
-
-const targets = [
-	['Node', 'runtimes/node'],
-	['Bun', 'runtimes/bun'],
-	['nub', 'runtimes/nub'],
-	['Vite', 'bundlers/vite'],
-	['Next.js', 'bundlers/next'],
-	['esbuild', 'bundlers/esbuild'],
-	['Rollup', 'bundlers/rollup'],
-	['webpack', 'bundlers/webpack'],
-	['Jest', 'runtimes/jest'],
-] as const;
 
 function Home() {
 	return (
@@ -122,15 +111,20 @@ function Home() {
 
 				<section className="tf-targets">
 					<h2>Runs where your code runs</h2>
-					<ul>
-						{targets.map(([name, path]) => (
-							<li key={path}>
-								<Link to="/docs/$" params={{ _splat: path }}>
-									{name}
-								</Link>
-							</li>
+					<div className="tf-marquee">
+						{[0, 1].map((copy) => (
+							<ul key={copy} aria-hidden={copy === 1 || undefined}>
+								{targets.map(({ name, path, icon }) => (
+									<li key={path}>
+										<Link to="/docs/$" params={{ _splat: path }} tabIndex={copy === 1 ? -1 : undefined}>
+											<Logo icon={icon} />
+											{name}
+										</Link>
+									</li>
+								))}
+							</ul>
 						))}
-					</ul>
+					</div>
 				</section>
 
 				<footer className="tf-footer">

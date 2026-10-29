@@ -5,3 +5,4 @@ github:
   repo: tyfigo
   branch: main
 npm: https://www.npmjs.com/package/tyfigo
+url: https://tyfigo.vercel.app

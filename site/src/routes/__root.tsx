@@ -2,7 +2,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-r
 import { RootProvider } from 'fumadocs-ui/provider/tanstack';
 
 import SearchDialog from '@/components/search';
-import { site } from '@/lib/shared';
+import { ogMeta, site } from '@/lib/shared';
 import appCss from '@/styles/app.css?url';
 
 export const Route = createRootRoute({
@@ -12,6 +12,7 @@ export const Route = createRootRoute({
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title: `${site.name}: ${site.tagline}` },
 			{ name: 'description', content: site.tagline },
+			...ogMeta({ title: `${site.name}: ${site.tagline}`, description: site.tagline, image: '/og.png' }),
 		],
 		links: [
 			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
