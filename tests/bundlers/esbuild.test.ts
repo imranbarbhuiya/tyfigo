@@ -11,7 +11,7 @@ import {
 	browserPlaceholderError,
 	configDirectoryFiles,
 	expectBrowserOutput,
-	expectConfigDirectoryOutput,
+	expectConfigDirectoryServerOutput,
 	expectServerOutput,
 	makeFixture,
 	useRuntime,
@@ -88,10 +88,8 @@ describe('esbuild', () => {
 
 	it('loads files in a .config directory and leaves other .yaml files to esbuild', async ({ expect }) => {
 		const fixture = await makeProject(configDirectoryFiles);
-		await expectConfigDirectoryOutput(
-			await buildEsbuild(fixture, 'client', 'browser'),
-			await buildEsbuild(fixture, 'server', 'node', false),
-		);
+		await expectBrowserOutput(await buildEsbuild(fixture, 'client', 'browser'));
+		await expectConfigDirectoryServerOutput(await buildEsbuild(fixture, 'server', 'node', false));
 		await expect(buildEsbuild(fixture, 'plain', 'node')).rejects.toThrow(
 			/No loader is configured for "\.yaml" files/u,
 		);

@@ -173,11 +173,9 @@ export const configDirectoryFiles: Record<string, string> = {
 };
 
 /**
- * Asserts the outputs of browser and server builds of {@link configDirectoryFiles}: the browser bundle inlines the base and
- * production files, and the server bundle adds the local file and reads `.env` files where it runs.
+ * Asserts that a server build of {@link configDirectoryFiles} adds the local file and reads `.env` files where it runs.
  */
-export const expectConfigDirectoryOutput = async (client: string, server: string) => {
-	await expectBrowserOutput(client);
+export const expectConfigDirectoryServerOutput = async (server: string) => {
 	const deploy = await makeProject({ '.env.production': 'PORT=8080' });
 	await copyFile(server, join(deploy, 'server.mjs'));
 	expect(await runBundle('server.mjs', deploy, 'production')).toEqual({

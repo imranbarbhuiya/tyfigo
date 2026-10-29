@@ -8,7 +8,7 @@ import {
 	browserPlaceholderError,
 	configDirectoryFiles,
 	expectBrowserOutput,
-	expectConfigDirectoryOutput,
+	expectConfigDirectoryServerOutput,
 	expectServerOutput,
 	makeFixture,
 	useRuntime,
@@ -72,8 +72,8 @@ describe('vite', () => {
 
 	it('loads files in a .config directory and leaves other .yaml files to Vite', async () => {
 		const fixture = await makeProject(configDirectoryFiles);
-		const client = await buildVite(fixture, 'client', false, 'production');
-		await expectConfigDirectoryOutput(client, await buildVite(fixture, 'server', true));
+		await expectBrowserOutput(await buildVite(fixture, 'client', false, 'production'));
+		await expectConfigDirectoryServerOutput(await buildVite(fixture, 'server', true));
 		await expect(buildVite(fixture, 'plain', true)).rejects.toThrow(/data\.yaml/u);
 	});
 
