@@ -11,7 +11,7 @@ import { afterAll, beforeAll, expect } from 'vitest';
 
 import { makeProject } from '../helpers.ts';
 
-export type Entry = 'client' | 'server' | 'bad';
+export type Entry = 'client' | 'server' | 'bad' | 'plain';
 
 const runtimeDirectory = { path: '' };
 
@@ -156,6 +156,35 @@ export const expectServerOutput = async (file: string, fixture: string, environm
 			? { port: 3_000, secret: 'deployed', name: 'local-server', tier: 'base' }
 			: production,
 	);
+};
+
+export const configDirectoryFiles: Record<string, string> = {
+	'package.json': '{ "name": "fixture", "type": "module" }',
+	'.config/client.yaml': 'name: base\ntheme: light\n',
+	'.config/client.production.yaml': 'theme: dark\n',
+	'.config/client.local.yaml': 'name: local-client\n',
+	'.config/server.yaml': 'port: ${PORT:-3000}\nname: base\ntier: base\n',
+	'.config/server.production.yaml': 'tier: production\n',
+	'.config/server.local.yaml': 'name: local-server\n',
+	'client.js': "import config from './.config/client.yaml';\n\nconsole.log(JSON.stringify(config));\n",
+	'server.js': "import config from './.config/server.yaml';\n\nconsole.log(JSON.stringify(config));\n",
+	'plain.js': "import data from './data.yaml';\n\nconsole.log(JSON.stringify(data));\n",
+	'data.yaml': 'plain: true\n',
+};
+
+/**
+ * Asserts the outputs of browser and server builds of {@link configDirectoryFiles}: the browser bundle inlines the base and
+ * production files, and the server bundle adds the local file and reads `.env` files where it runs.
+ */
+export const expectConfigDirectoryOutput = async (client: string, server: string) => {
+	await expectBrowserOutput(client);
+	const deploy = await makeProject({ '.env.production': 'PORT=8080' });
+	await copyFile(server, join(deploy, 'server.mjs'));
+	expect(await runBundle('server.mjs', deploy, 'production')).toEqual({
+		port: 8_080,
+		name: 'local-server',
+		tier: 'production',
+	});
 };
 
 export const browserPlaceholderError = /bad\.config\.yaml:1:6 - 'url' uses an environment placeholder/u;

@@ -2,9 +2,9 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 import { Effect } from 'effect';
 
-import { findProjectRoot, isFile, searchDirectories } from '../core/files.ts';
+import { envDirectories, findProjectRoot, isFile, layerDirectories } from '../core/files.ts';
 import {
-	configSuffixes,
+	configFileDescription,
 	discoverEnvironments,
 	envFileNames,
 	fileProblem,
@@ -12,7 +12,7 @@ import {
 	formatProblems,
 	hasPlaceholder,
 	isPlainObject,
-	parseConfigFileName,
+	parseConfigPath,
 	pathKey,
 	problemAt,
 	processEnv,
@@ -68,19 +68,24 @@ const watchFilesOf = Effect.fn('watchFilesOf')(function* (
 	environment: string | undefined,
 	target: LoadTarget,
 ) {
-	const name = parseConfigFileName(basename(file));
+	const name = parseConfigPath(file);
 	if (!name) return [file];
 
 	const files = [file];
 	if (environment) files.push(join(dirname(file), `${name.stem}.${environment}${name.suffix}`));
 	if (target === 'browser') return files;
 
-	const directories = yield* searchDirectories(file);
 	const locals = environment
 		? [`${name.stem}.local${name.suffix}`, `${name.stem}.${environment}.local${name.suffix}`]
 		: [`${name.stem}.local${name.suffix}`];
-	for (const fileName of [...locals, ...envFileNames(environment)]) {
-		for (const directory of directories) files.push(join(directory, fileName));
+	const searches = [
+		[yield* layerDirectories(file), locals],
+		[yield* envDirectories(file), envFileNames(environment)],
+	] as const;
+	for (const [directories, fileNames] of searches) {
+		for (const fileName of fileNames) {
+			for (const directory of directories) files.push(join(directory, fileName));
+		}
 	}
 	return files;
 });
@@ -142,12 +147,12 @@ const failingCode = (file: string, problems: readonly Problem[]) =>
 
 const serverModule = Effect.fn('serverModule')(function* (file: string, options: LoadOptions) {
 	const problems: Problem[] = [];
-	if (!parseConfigFileName(basename(file))) {
+	if (!parseConfigPath(file)) {
 		problems.push(
 			fileProblem(
 				file,
 				'unsupported-file',
-				`${basename(file)} is not a config file; expected a name ending in ${configSuffixes.join(', ')}`,
+				`${basename(file)} is not a config file; expected ${configFileDescription}`,
 			),
 		);
 	} else if (!(yield* isFile(file))) problems.push(fileProblem(file, 'file-not-found', `Cannot find ${file}`));

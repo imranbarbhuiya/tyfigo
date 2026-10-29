@@ -1,7 +1,17 @@
 import { readdirSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { Effect } from 'effect';
+
+/**
+ * The name of a directory whose files of a format extension are config files, `.config/app.yaml` for example.
+ */
+export const configDirectory = '.config';
+
+/**
+ * Whether `path` is directly inside a `.config` directory.
+ */
+export const isInConfigDirectory = (path: string): boolean => basename(dirname(path)) === configDirectory;
 
 export const isFile = (path: string): Effect.Effect<boolean> =>
 	Effect.sync(() => statSync(path, { throwIfNoEntry: false })?.isFile() ?? false);
@@ -39,11 +49,32 @@ export const findFile = Effect.fn('findFile')(function* (directories: readonly s
 	return undefined;
 });
 
-/**
- * The base file's directory followed by the project root when it is a different directory.
- */
-export const searchDirectories = Effect.fn('searchDirectories')(function* (baseFile: string) {
-	const directory = dirname(baseFile);
+const withRoot = Effect.fn('withRoot')(function* (
+	directory: string,
+	inRoot: (root: string) => string = (root) => root,
+) {
 	const root = yield* findProjectRoot(directory);
-	return root === undefined || root === directory ? [directory] : [directory, root];
+	if (root === undefined) return [directory];
+	const second = inRoot(root);
+	return second === directory ? [directory] : [directory, second];
+});
+
+/**
+ * Where the local layers of a base file are searched: its directory, then the project root (the nearest directory with a
+ * `package.json`). For a file in a `.config` directory, the project root's `.config` directory.
+ */
+export const layerDirectories = Effect.fn('layerDirectories')(function* (baseFile: string) {
+	const directory = dirname(baseFile);
+	return yield* isInConfigDirectory(baseFile)
+		? withRoot(directory, (root) => join(root, configDirectory))
+		: withRoot(directory);
+});
+
+/**
+ * Where the `.env` files of a base file are searched: its directory, or the directory containing its `.config` directory, then
+ * the project root.
+ */
+export const envDirectories = Effect.fn('envDirectories')(function* (baseFile: string) {
+	const directory = dirname(baseFile);
+	return yield* withRoot(isInConfigDirectory(baseFile) ? dirname(directory) : directory);
 });

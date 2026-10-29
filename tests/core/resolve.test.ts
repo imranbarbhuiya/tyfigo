@@ -88,6 +88,27 @@ describe('resolveConfig', () => {
 		expect(result.positions.get(pathKey(['port']))?.file).toBe(join(root, 'app.config.yaml'));
 	});
 
+	it('merges the layers of a .config directory and reads .env files from the directory containing it', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'.env': 'DB_HOST=root-host\nPORT=1000',
+			'api/.env.production': 'PORT=2000',
+			'api/.config/.env.production': 'PORT=9999',
+			'api/.config/app.yaml': 'port: ${PORT:-3000}\ndb:\n  host: ${DB_HOST}\n  pool: 5\nname: app\n',
+			'api/.config/app.production.yaml': 'db:\n  pool: 20\n',
+			'.config/app.local.yaml': 'name: local\n',
+		});
+		const result = resolveConfigSync(join(root, 'api/.config/app.yaml'), { env: { NODE_ENV: 'production' } });
+		expect(result.problems).toEqual([]);
+		expect(result.value).toEqual({ port: 2_000, db: { host: 'root-host', pool: 20 }, name: 'local' });
+		expect(result.layers.map((layer) => layer.file)).toEqual([
+			join(root, 'api/.config/app.yaml'),
+			join(root, 'api/.config/app.production.yaml'),
+			join(root, '.config/app.local.yaml'),
+		]);
+		expect(result.envFiles).toEqual([join(root, '.env'), join(root, 'api/.env.production')]);
+	});
+
 	it('lets the environment option win over NODE_ENV', async () => {
 		const root = await makeProject({
 			'package.json': '{}',

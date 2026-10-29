@@ -1,0 +1,5 @@
+users:
+  - name: Ada
+    admin: true
+  - name: Linus
+    admin: false

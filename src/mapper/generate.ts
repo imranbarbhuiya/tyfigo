@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
-import { basename, dirname, relative, resolve } from 'node:path';
+import { basename, dirname, extname, relative, resolve } from 'node:path';
 
-import { configSuffixes, parseConfigFileName } from '../core/formats/index.ts';
+import { formatExtensions, formatOfExtension, parseConfigPath } from '../core/formats/index.ts';
 import { isPlainObject, resolvePlaceholders } from '../core/placeholders.ts';
 import { pathKey, SourceIndex } from '../core/positions.ts';
 import { fileProblem } from '../core/problems.ts';
@@ -67,7 +67,8 @@ export const diagnosticCodes: Readonly<Record<ProblemCode, number>> = {
 export interface ConfigFileRole {
 	readonly kind: LayerKind;
 	/**
-	 * The base file's name, `app.config.yaml` for `app.production.local.config.yaml`.
+	 * The base file's name, `app.config.yaml` for `app.production.local.config.yaml` and `app.yaml` for
+	 * `.config/app.production.yaml`.
 	 */
 	readonly base: string;
 	readonly environment: string | undefined;
@@ -75,11 +76,11 @@ export interface ConfigFileRole {
 }
 
 /**
- * Reads a config file's layer from its name: the first dot-separated part of the stem names the base file, a trailing `local`
+ * Reads a config file's layer from its path: the first dot-separated part of the stem names the base file, a trailing `local`
  * marks a local file and anything in between is the environment.
  */
-export const configFileRole = (fileName: string): ConfigFileRole | undefined => {
-	const name = parseConfigFileName(fileName);
+export const configFileRole = (path: string): ConfigFileRole | undefined => {
+	const name = parseConfigPath(path);
 	if (!name) return undefined;
 	const [stem = '', ...rest] = name.stem.split('.');
 	const base = `${stem}${name.suffix}`;
@@ -131,11 +132,13 @@ class Generator {
 	readonly source: SourceIndex;
 	readonly positions: PositionMap;
 	readonly format: Format;
+	readonly placeholders: boolean;
 
-	constructor(text: string, positions: PositionMap, format: Format) {
+	constructor(text: string, positions: PositionMap, format: Format, placeholders = true) {
 		this.source = new SourceIndex(text);
 		this.positions = positions;
 		this.format = format;
+		this.placeholders = placeholders;
 	}
 
 	#slice(start: number, length: number) {
@@ -180,7 +183,7 @@ class Generator {
 	}
 
 	placeholderType(text: string) {
-		const match = wholePlaceholder.exec(text);
+		const match = this.placeholders ? wholePlaceholder.exec(text) : null;
 		if (match?.[1] !== ':-') return 'string';
 		const value = this.format.parseScalar(match[2] ?? '');
 		return value === null ? 'null' : typeof value;
@@ -348,16 +351,29 @@ const layerModule = (generator: Generator, value: unknown, specifier: string) =>
 	return writer.write('\ndeclare const config: Config;\nexport default config;\n');
 };
 
+const dataModule = (file: string, text: string, format: Format): GeneratedModule => {
+	const parsed = format.parse(text, file);
+	const diagnostics = parsed.problems.map(toDiagnostic);
+	if (parsed.value === undefined || parsed.problems.some((problem) => problem.code === 'parse-error')) {
+		return untyped(diagnostics);
+	}
+	const writer = baseModule(new Generator(text, parsed.positions, format, false), parsed.value);
+	return { text: writer.text, extension: '.ts', mappings: writer.mappings, diagnostics };
+};
+
 /**
  * Turns a config file into a TypeScript module for a content mapper. A base file declares its widened, readonly type. An
  * environment or local file checks each of its keys against the base file's type, with every key and value mapped back to the
- * config file, and exports the base file's type.
+ * config file, and exports the base file's type. Any other file of a format extension, such as `data.yaml` when a project
+ * claims `.yaml`, declares its widened, readonly type as plain data, with no layers or placeholders.
  */
 export const generateTypes = (path: string, text: string, options: GenerateOptions = {}): GeneratedModule => {
 	const file = resolve(path);
-	const role = configFileRole(basename(file));
+	const role = configFileRole(file);
 	if (!role) {
-		const message = `${basename(file)} is not a config file. tyfigo handles files ending in ${configSuffixes.join(', ')}`;
+		const format = formatOfExtension(extname(file));
+		if (format) return dataModule(file, text, format);
+		const message = `${basename(file)} is not a file tyfigo reads. tyfigo handles files ending in ${Object.keys(formatExtensions).join(', ')}`;
 		return untyped([toDiagnostic(fileProblem(file, 'unsupported-file', message))]);
 	}
 

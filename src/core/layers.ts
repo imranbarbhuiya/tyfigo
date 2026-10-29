@@ -1,9 +1,9 @@
-import { basename, dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { Effect } from 'effect';
 
-import { findFile, isFile, listDirectory, searchDirectories } from './files.ts';
-import { parseConfigFileName } from './formats/index.ts';
+import { findFile, isFile, layerDirectories, listDirectory } from './files.ts';
+import { parseConfigPath } from './formats/index.ts';
 
 export type LayerKind = 'base' | 'environment' | 'local' | 'environment-local';
 
@@ -14,15 +14,16 @@ export interface LayerFile {
 
 /**
  * The layer files of a base config file, in the order they apply: `app.config.yaml`, `app.<environment>.config.yaml`,
- * `app.local.config.yaml` and `app.<environment>.local.config.yaml`. Only files that exist are listed. Environment files sit next
- * to the base file, and local files are searched next to it first, then in the nearest directory with a `package.json`.
+ * `app.local.config.yaml` and `app.<environment>.local.config.yaml` (`.config/app.yaml`, `.config/app.<environment>.yaml` and so
+ * on in a `.config` directory). Only files that exist are listed. Environment files sit next to the base file, and local files are
+ * searched next to it first, then in the project root (or its `.config` directory), see {@link layerDirectories}.
  */
 export const discoverLayers = Effect.fn('discoverLayers')(function* (baseFile: string, environment?: string) {
 	const file = resolve(baseFile);
-	const name = parseConfigFileName(basename(file));
+	const name = parseConfigPath(file);
 	if (!name) return [];
 
-	const directories = yield* searchDirectories(file);
+	const directories = yield* layerDirectories(file);
 	const layers: LayerFile[] = [];
 	if (yield* isFile(file)) layers.push({ file, kind: 'base' });
 	if (environment) {
@@ -46,11 +47,11 @@ export const discoverLayers = Effect.fn('discoverLayers')(function* (baseFile: s
  */
 export const discoverEnvironments = Effect.fn('discoverEnvironments')(function* (baseFile: string) {
 	const file = resolve(baseFile);
-	const name = parseConfigFileName(basename(file));
+	const name = parseConfigPath(file);
 	if (!name) return [];
 
 	const environments = new Set<string>();
-	for (const directory of yield* searchDirectories(file)) {
+	for (const directory of yield* layerDirectories(file)) {
 		for (const entry of yield* listDirectory(directory)) {
 			if (!entry.startsWith(`${name.stem}.`) || !entry.endsWith(name.suffix)) continue;
 			const middle = entry.slice(name.stem.length + 1, -name.suffix.length);

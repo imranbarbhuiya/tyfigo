@@ -1,7 +1,8 @@
 import { extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { configSuffixes } from '../core/index.ts';
+import { configDirectory } from '../core/files.ts';
+import { configSuffixes, formatExtensions } from '../core/index.ts';
 
 import type { LoadTarget } from '../runtime/load.ts';
 import type { TyfigoPluginOptions } from './shared.ts';
@@ -19,6 +20,15 @@ export const loaderOptions = (options: Omit<TyfigoPluginOptions, 'target'>, targ
 const browser: TurbopackRuleCondition = { any: ['browser', 'edge-light'] };
 
 /**
+ * The `turbopack.rules` globs for config files: `*.config.yaml` and the other suffixes match file names, and the `.config`
+ * directory globs, which contain a `/`, match project-relative paths.
+ */
+export const turbopackGlobs = [
+	...configSuffixes.map((suffix) => `*${suffix}`),
+	...Object.keys(formatExtensions).map((extension) => `**/${configDirectory}/*${extension}`),
+];
+
+/**
  * `turbopack.rules` that load config files with the tyfigo loader: client and Edge code gets the browser module, Node.js
  * server code the bundled server module.
  */
@@ -26,8 +36,8 @@ export const turbopackRules = (
 	options: Omit<TyfigoPluginOptions, 'target'> = {},
 ): Record<string, TurbopackRuleConfigCollection> =>
 	Object.fromEntries(
-		configSuffixes.map((suffix) => [
-			`*${suffix}`,
+		turbopackGlobs.map((glob) => [
+			glob,
 			[
 				{
 					condition: browser,

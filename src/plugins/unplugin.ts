@@ -1,12 +1,8 @@
 import { createUnplugin } from 'unplugin';
 
-import {
-	configFilePattern,
-	findNodeOnlyImports,
-	isServerPlatform,
-	loadConfigImport,
-	tyfigoImportPattern,
-} from './shared.ts';
+import { findNodeOnlyImports, isServerPlatform, loadConfigImport, tyfigoImportPattern } from './shared.ts';
+
+import { configPathPattern } from '../core/index.ts';
 
 import type { LoadOptions } from '../runtime/load.ts';
 import type { TyfigoPluginOptions, WebpackLikeCompiler } from './shared.ts';
@@ -57,7 +53,7 @@ export const unpluginFactory: UnpluginFactory<TyfigoPluginOptions | undefined, f
 		name: 'tyfigo',
 		enforce: 'pre',
 		load: {
-			filter: { id: configFilePattern },
+			filter: { id: configPathPattern },
 			handler(id, loadOptions?: { readonly ssr?: boolean }) {
 				const detected = detect(this, loadOptions);
 				const target = options.target ?? detected.target;

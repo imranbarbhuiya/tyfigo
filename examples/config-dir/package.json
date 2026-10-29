@@ -1,0 +1,17 @@
+{
+	"name": "example-config-dir",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "node --import tyfigo/register src/main.ts",
+		"typecheck": "tsc --noEmit --runExternalCode",
+		"check": "node check.ts"
+	},
+	"dependencies": {
+		"tyfigo": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.6",
+		"typescript": "7.1.0-beta"
+	}
+}

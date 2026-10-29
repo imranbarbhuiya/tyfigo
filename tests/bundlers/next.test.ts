@@ -9,8 +9,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 
 import { fixtureFiles, usePackage, useRuntime } from './helpers.ts';
 
-import { configSuffixes } from '../../src/core/index.ts';
 import { typeCheck, withTyfigo } from '../../src/plugins/next.ts';
+import { turbopackGlobs } from '../../src/plugins/turbopack.ts';
 import { makeProject } from '../helpers.ts';
 
 const runtime = useRuntime();
@@ -113,6 +113,22 @@ describe.each([
 		expect(server).not.toContain(JSON.stringify(join(fixture, 'server.config.yaml')));
 	});
 
+	it('loads a config file in a .config directory in client code', { timeout: 180_000 }, async () => {
+		const fixture = await makeNextFixture('.config/client.yaml');
+		await mkdir(join(fixture, '.config'));
+		await copyFile(runtime.path, join(fixture, '.config/runtime.mjs'));
+		for (const name of ['client', 'client.production', 'client.local']) {
+			await copyFile(join(fixture, `${name}.config.yaml`), join(fixture, `.config/${name}.yaml`));
+		}
+		expect(await nextBuild(fixture, flags)).toBe('');
+
+		const html = await readFile(join(fixture, '.next/server/app/index.html'), 'utf8');
+		expect(html).toContain(quoted(clientServerRender));
+		const client = await readTree(join(fixture, '.next/static'));
+		expect(client).toContain('dark');
+		expect(client).not.toContain('local-client');
+	});
+
 	it('fails on a placeholder in client code', { timeout: 180_000 }, async () => {
 		const fixture = await makeNextFixture('bad.config.yaml');
 		expect(await nextBuild(fixture, flags)).toMatch(/'url' uses an environment placeholder/u);
@@ -144,10 +160,7 @@ describe('withTyfigo', () => {
 			turbopack: { rules: { '*.svg': { loaders: ['svg-loader'], as: '*.js' } } },
 			webpack: (webpackConfig: { marked?: boolean }) => ({ ...webpackConfig, marked: true }),
 		});
-		expect(Object.keys(config.turbopack?.rules ?? {})).toEqual([
-			...configSuffixes.map((suffix) => `*${suffix}`),
-			'*.svg',
-		]);
+		expect(Object.keys(config.turbopack?.rules ?? {})).toEqual([...turbopackGlobs, '*.svg']);
 		const rules: unknown[] = [];
 		const result = config.webpack?.({ module: { rules } }, {
 			isServer: false,

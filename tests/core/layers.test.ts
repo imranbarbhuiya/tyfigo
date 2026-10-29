@@ -59,6 +59,26 @@ describe('discoverLayers', () => {
 		]);
 	});
 
+	it('lists the layers of a file in a .config directory, with local files in the project root .config directory', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'.config/app.local.yaml': 'a: 3',
+			'app.local.yaml': 'a: 0',
+			'api/.config/app.yaml': 'a: 1',
+			'api/.config/app.production.yaml': 'a: 2',
+			'api/.config/app.production.local.yaml': 'a: 4',
+			'api/.config/app.staging.yaml': 'a: 5',
+		});
+		const base = join(root, 'api/.config/app.yaml');
+		expect(await Effect.runPromise(discoverLayers(base, 'production'))).toEqual([
+			{ file: base, kind: 'base' },
+			{ file: join(root, 'api/.config/app.production.yaml'), kind: 'environment' },
+			{ file: join(root, '.config/app.local.yaml'), kind: 'local' },
+			{ file: join(root, 'api/.config/app.production.local.yaml'), kind: 'environment-local' },
+		]);
+		expect(await Effect.runPromise(discoverEnvironments(base))).toEqual(['production', 'staging']);
+	});
+
 	it('returns nothing for a file it does not claim', async () => {
 		expect(await Effect.runPromise(discoverLayers('/tmp/app.yaml'))).toEqual([]);
 	});

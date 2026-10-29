@@ -3,15 +3,13 @@ import { fileURLToPath } from 'node:url';
 
 import { plugin } from 'bun';
 
-import { configSuffixes, formatProblems } from './core/index.ts';
+import { configPathPattern, formatProblems } from './core/index.ts';
 import { load } from './runtime/index.ts';
 
 import type { BunPlugin } from 'bun';
 
 // The runtime next to this module, so it resolves from config files outside the dependency tree: `.ts` in this repo, `.mjs` once built.
 const runtime = fileURLToPath(new URL(`runtime/index${extname(import.meta.url)}`, import.meta.url));
-
-const filter = new RegExp(`[^/\\\\](?:${configSuffixes.map((suffix) => suffix.replaceAll('.', '\\.')).join('|')})$`);
 
 export interface TyfigoBunOptions {
 	/**
@@ -30,7 +28,7 @@ export const tyfigo = (options: TyfigoBunOptions = {}): BunPlugin => ({
 	setup(build) {
 		const config = build.config as typeof build.config | undefined;
 		const target = config?.target === 'browser' ? 'browser' : 'server';
-		build.onLoad({ filter }, ({ path }) => {
+		build.onLoad({ filter: configPathPattern }, ({ path }) => {
 			const result = load(path, {
 				target,
 				runtime,

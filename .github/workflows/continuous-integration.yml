@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [node, bun, nub, vite, next, esbuild, webpack, rspack, jest, effect]
+        example: [node, bun, nub, vite, next, esbuild, webpack, rspack, jest, effect, config-dir]
     env:
       NEXT_TELEMETRY_DISABLED: 1
     steps:

@@ -1,0 +1,9 @@
+name: tyfigo-config-dir-example
+server:
+  host: localhost
+  port: ${PORT:-3000}
+database:
+  url: ${DATABASE_URL}
+  pool:
+    max: 5
+features: [search]

@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { ini, json5, jsonc, parseConfigFileName, properties, toml, xml, yaml } from '../../src/core/formats/index.ts';
+import {
+	configPathPattern,
+	ini,
+	json5,
+	jsonc,
+	parseConfigPath,
+	properties,
+	toml,
+	xml,
+	yaml,
+} from '../../src/core/formats/index.ts';
 import { spanText } from '../helpers.ts';
 
 describe('yaml', () => {
@@ -550,22 +560,64 @@ describe('xml', () => {
 	});
 });
 
-describe('parseConfigFileName', () => {
+describe('parseConfigPath', () => {
 	it('claims only *.config.<ext>', () => {
-		expect(parseConfigFileName('app.config.yaml')).toMatchObject({ stem: 'app', suffix: '.config.yaml' });
-		expect(parseConfigFileName('app.production.config.yml')).toMatchObject({
+		expect(parseConfigPath('app.config.yaml')).toMatchObject({ stem: 'app', suffix: '.config.yaml' });
+		expect(parseConfigPath('app.production.config.yml')).toMatchObject({
 			stem: 'app.production',
 			suffix: '.config.yml',
 		});
-		expect(parseConfigFileName('app.config.toml')?.format.name).toBe('toml');
-		expect(parseConfigFileName('app.config.jsonc')?.format.name).toBe('jsonc');
-		expect(parseConfigFileName('app.config.json5')?.format.name).toBe('json5');
-		expect(parseConfigFileName('app.config.ini')?.format.name).toBe('ini');
-		expect(parseConfigFileName('app.config.properties')?.format.name).toBe('properties');
-		expect(parseConfigFileName('app.config.xml')?.format.name).toBe('xml');
-		expect(parseConfigFileName('app.xml')).toBeUndefined();
-		expect(parseConfigFileName('app.yaml')).toBeUndefined();
-		expect(parseConfigFileName('.config.yaml')).toBeUndefined();
-		expect(parseConfigFileName('app.config.json')).toBeUndefined();
+		expect(parseConfigPath('app.config.toml')?.format.name).toBe('toml');
+		expect(parseConfigPath('app.config.jsonc')?.format.name).toBe('jsonc');
+		expect(parseConfigPath('app.config.json5')?.format.name).toBe('json5');
+		expect(parseConfigPath('app.config.ini')?.format.name).toBe('ini');
+		expect(parseConfigPath('app.config.properties')?.format.name).toBe('properties');
+		expect(parseConfigPath('app.config.xml')?.format.name).toBe('xml');
+		expect(parseConfigPath('app.xml')).toBeUndefined();
+		expect(parseConfigPath('app.yaml')).toBeUndefined();
+		expect(parseConfigPath('.config.yaml')).toBeUndefined();
+		expect(parseConfigPath('app.config.json')).toBeUndefined();
+	});
+
+	it('claims files of a format extension in a .config directory', () => {
+		expect(parseConfigPath('/project/.config/app.yaml')).toMatchObject({ stem: 'app', suffix: '.yaml' });
+		expect(parseConfigPath('/project/.config/app.production.local.yml')).toMatchObject({
+			stem: 'app.production.local',
+			suffix: '.yml',
+		});
+		expect(parseConfigPath('/project/.config/app.config.toml')).toMatchObject({
+			stem: 'app',
+			suffix: '.config.toml',
+		});
+		for (const extension of ['toml', 'jsonc', 'json5', 'ini', 'properties', 'xml']) {
+			expect(parseConfigPath(`/project/.config/app.${extension}`)?.format.name).toBe(extension);
+		}
+		expect(parseConfigPath('/project/data.yaml')).toBeUndefined();
+		expect(parseConfigPath('/project/.config/app.json')).toBeUndefined();
+		expect(parseConfigPath('/project/.config/.yaml')).toBeUndefined();
+		expect(parseConfigPath('/project/.config/nested/app.yaml')).toBeUndefined();
+		expect(parseConfigPath('/project/my.config/app.yaml')).toBeUndefined();
+	});
+});
+
+describe('configPathPattern', () => {
+	it('matches the paths parseConfigPath claims with either separator', () => {
+		const paths = [
+			'/project/app.config.yaml',
+			'/project/.config/app.yaml',
+			'/project/.config/app.production.toml',
+			'C:\\project\\.config\\app.yaml',
+			'C:\\project\\app.config.ini',
+			'/project/data.yaml',
+			'/project/.config.yaml',
+			'/project/.config/.yaml',
+			'/project/.config/app.json',
+			'/project/.config/nested/app.yaml',
+			'/project/my.config/app.yaml',
+		];
+		expect(paths.filter((path) => configPathPattern.test(path))).toEqual(paths.slice(0, 5));
+		for (const path of paths.filter((item) => item.startsWith('/'))) {
+			expect(configPathPattern.test(path)).toBe(parseConfigPath(path) !== undefined);
+		}
 	});
 });

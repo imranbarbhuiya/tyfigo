@@ -6,13 +6,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	browserPlaceholderError,
+	configDirectoryFiles,
 	expectBrowserOutput,
+	expectConfigDirectoryOutput,
 	expectServerOutput,
 	makeFixture,
 	useRuntime,
 } from './helpers.ts';
 
 import tyfigo from '../../src/plugins/vite.ts';
+import { makeProject } from '../helpers.ts';
 
 import type { Entry } from './helpers.ts';
 
@@ -65,6 +68,13 @@ describe('vite', () => {
 
 	it('fails on a placeholder in a client build', async () => {
 		await expect(buildVite(await makeFixture(), 'bad', false)).rejects.toThrow(browserPlaceholderError);
+	});
+
+	it('loads files in a .config directory and leaves other .yaml files to Vite', async () => {
+		const fixture = await makeProject(configDirectoryFiles);
+		const client = await buildVite(fixture, 'client', false, 'production');
+		await expectConfigDirectoryOutput(client, await buildVite(fixture, 'server', true));
+		await expect(buildVite(fixture, 'plain', true)).rejects.toThrow(/data\.yaml/u);
 	});
 
 	it('loads the server module by path and watches the layer and .env files in dev SSR', async () => {

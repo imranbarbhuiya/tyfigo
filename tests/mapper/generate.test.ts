@@ -123,6 +123,20 @@ describe('configFileRole', () => {
 		});
 		expect(configFileRole('app.json')).toBeUndefined();
 	});
+
+	it('reads the layer of a file in a .config directory', () => {
+		expect(configFileRole('/project/.config/app.yaml')).toMatchObject({ kind: 'base', base: 'app.yaml' });
+		expect(configFileRole('/project/.config/app.production.yaml')).toMatchObject({
+			kind: 'environment',
+			base: 'app.yaml',
+			environment: 'production',
+		});
+		expect(configFileRole('/project/.config/app.production.local.toml')).toMatchObject({
+			kind: 'environment-local',
+			base: 'app.toml',
+		});
+		expect(configFileRole('/project/data.yaml')).toBeUndefined();
+	});
 });
 
 describe.each(cases)('$format.name', ({ format, suffix, base, environment }) => {
@@ -299,6 +313,37 @@ describe('problems', () => {
 		const module = generateTypes('/project/app.json', '{}');
 		expect(module.text).toBe('declare const config: any;\nexport default config;\n');
 		expect(module.diagnostics).toMatchObject([{ code: 1_005 }]);
+	});
+});
+
+describe('plain data files', () => {
+	it('types a file of a format extension outside .config as data, with placeholders as strings', () => {
+		const module = generateTypes('/project/data.yaml', 'port: ${PORT:-3000}\nbad: ${1BAD}\ntags: [a]\n');
+		expect(module.diagnostics).toEqual([]);
+		expect(module.text).toBe(
+			'declare const config: {\n\treadonly port: string;\n\treadonly bad: string;\n\treadonly tags: readonly string[];\n};\nexport default config;\n',
+		);
+	});
+
+	it('types a data file with a layer-like name as data', () => {
+		const module = generateTypes('/project/data.production.toml', 'port = 1\n');
+		expect(module.text).toContain('readonly port: number;');
+		expect(module.text).not.toContain('import');
+	});
+
+	it('reports parse errors in a data file', () => {
+		const module = generateTypes('/project/data.toml', 'port = \n');
+		expect(module.text).toBe('declare const config: any;\nexport default config;\n');
+		expect(module.diagnostics).toMatchObject([{ code: 1_001 }]);
+	});
+
+	it('generates a .config file as config', () => {
+		expect(generateTypes('/project/.config/app.yaml', 'port: ${PORT:-3000}\n').text).toContain(
+			'readonly port: number;',
+		);
+		expect(generateTypes('/project/.config/app.production.yaml', 'port: 1\n').text).toContain(
+			'import type Base from "./app.yaml";',
+		);
 	});
 });
 

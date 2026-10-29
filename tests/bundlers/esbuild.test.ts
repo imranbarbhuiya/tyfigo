@@ -9,7 +9,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	browserPlaceholderError,
+	configDirectoryFiles,
 	expectBrowserOutput,
+	expectConfigDirectoryOutput,
 	expectServerOutput,
 	makeFixture,
 	useRuntime,
@@ -82,6 +84,17 @@ describe('esbuild', () => {
 
 	it('fails on a placeholder in a browser build', async ({ expect }) => {
 		await expect(buildEsbuild(await makeFixture(), 'bad', 'browser')).rejects.toThrow(browserPlaceholderError);
+	});
+
+	it('loads files in a .config directory and leaves other .yaml files to esbuild', async ({ expect }) => {
+		const fixture = await makeProject(configDirectoryFiles);
+		await expectConfigDirectoryOutput(
+			await buildEsbuild(fixture, 'client', 'browser'),
+			await buildEsbuild(fixture, 'server', 'node', false),
+		);
+		await expect(buildEsbuild(fixture, 'plain', 'node')).rejects.toThrow(
+			/No loader is configured for "\.yaml" files/u,
+		);
 	});
 });
 
