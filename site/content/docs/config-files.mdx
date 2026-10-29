@@ -40,8 +40,9 @@ Environment files sit next to the base file. Local files are looked for next to 
 
 ## The environment name
 
-The environment is `NODE_ENV` by default. Bundler plugins use the bundler's mode instead where there is one (Vite, webpack,
-Rspack, Rsbuild), and every plugin and loader takes an `environment` option:
+The environment is `NODE_ENV` by default. For browser builds and the Vite dev server, bundler plugins use the bundler's mode
+instead where there is one (Vite, webpack, Rspack, Rsbuild). A server bundle reads `NODE_ENV` when it starts
+([Server bundles](/docs/browser-builds#server-bundles)). Every plugin and loader takes an `environment` option, which fixes it:
 
 ```ts
 tyfigo({ environment: 'staging' });

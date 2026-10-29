@@ -12,14 +12,14 @@ export default withTyfigo({});
 `withTyfigo(nextConfig, options?)` adds:
 
 - **Loader rules** for webpack and Turbopack. Client components and Edge code get the [browser build](/docs/browser-builds):
-  base and environment files inlined, placeholders fail the build. Node.js server code gets the base, environment and local files of the build's environment
-  inlined ([Server bundles](/docs/browser-builds#server-bundles)), with `.env`
-  files and environment variables read when the server starts.
+  base and environment files inlined, placeholders fail the build. Node.js server code gets the base, local and every environment's files
+  inlined, and picks them by `NODE_ENV` when the server starts ([Server bundles](/docs/browser-builds#server-bundles)), with
+  `.env` files and environment variables read then too.
 - **A type check that can read config imports.** `next build` type-checks without `--runExternalCode`, so `withTyfigo` turns
   that check off (`typescript.ignoreBuildErrors`) and runs `tsc --noEmit --runExternalCode` after the production compile.
   Pass `{ typeCheck: false }` to skip it, for example when CI runs tsc separately.
 
-Options: `environment` (defaults to `NODE_ENV`), `runtime` and `typeCheck`.
+Options: `environment` (defaults to `NODE_ENV`; setting it fixes the server's environment), `runtime` and `typeCheck`.
 
 ## Server and client config
 

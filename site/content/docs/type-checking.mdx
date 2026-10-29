@@ -117,6 +117,100 @@ src/main.ts(7,36): error TS2345: Argument of type '{ readonly server: { readonly
     Type 'number' is not assignable to type 'string'.
 ```
 
+## What tsc checks without a schema
+
+A plain import is typed from the base file alone, strictly and widened. That has four limits. Each one has the same fix:
+pass the import through [`loadConfig`](/docs/schemas#loadconfig) with a schema, and use what it returns.
+
+### Strict keys: no optional sections
+
+An environment file can only override keys the base file has, so it can't add a section:
+
+```yaml title="config/app.config.yaml"
+name: app
+```
+
+```yaml title="config/app.production.config.yaml"
+sentry:
+  dsn: https://key@o1.ingest.sentry.io/1
+```
+
+```txt
+config/app.production.config.yaml(1,1): error TS2353: Object literal may only specify known properties, and 'sentry' does not exist in type '{ readonly name?: string | undefined; }'.
+```
+
+Declare the section in the base file with its off value, and let a schema describe both shapes:
+
+```yaml title="config/app.config.yaml"
+name: app
+sentry:
+  enabled: false
+  dsn: ''
+```
+
+```yaml title="config/app.production.config.yaml"
+sentry:
+  enabled: true
+  dsn: https://key@o1.ingest.sentry.io/1
+```
+
+```ts
+const Config = z.object({
+	sentry: z.discriminatedUnion('enabled', [
+		z.object({ enabled: z.literal(false) }),
+		z.object({ enabled: z.literal(true), dsn: z.url() }),
+	]),
+});
+```
+
+### Widened values: no literal types
+
+`logLevel: info` is `string`, not `'info' | 'debug'`, because another environment file can set any string:
+
+```ts
+const level: 'debug' | 'info' = config.logLevel;
+// error TS2322: Type 'string' is not assignable to type '"debug" | "info"'.
+```
+
+A schema narrows it. `loadConfig` accepts a widened `string` where the schema expects a literal, and checks the value when it
+runs:
+
+```ts
+const Config = z.object({ logLevel: z.enum(['debug', 'info', 'warn', 'error']) });
+const settings = loadConfig(config, Config);
+// settings.logLevel: 'debug' | 'info' | 'warn' | 'error'
+```
+
+### A placeholder without a default is a string
+
+`${WORKERS}` has nothing to take a type from, so it is `string`, and it stays a string when the app runs:
+
+```ts
+const workers: number = config.workers;
+// error TS2322: Type 'string' is not assignable to type 'number'.
+```
+
+Give it a default (`${WORKERS:-4}` is a `number`), or coerce it with a schema when it has to be set:
+
+```ts
+const Config = z.object({ workers: z.coerce.number().int().positive() });
+```
+
+### Schema mismatches are reported at the call
+
+With `loadConfig`, a file whose type can't match the schema is a type error at the `loadConfig(...)` call in your code
+([above](#what-tsc-reports)), not on the YAML line. When it runs, a value the schema rejects is reported at its line in the
+file that set it:
+
+```txt
+Invalid config /srv/app/config/app.config.yaml:
+  /srv/app/config/app.staging.config.yaml:1:11 - logLevel: Invalid option: expected one of "debug"|"info"|"warn"|"error"
+  /srv/app/config/app.config.yaml:3:10 - workers: Too small: expected number to be >0
+```
+
+Keep one `loadConfig` call per config file next to its schema, and import the result instead of the file, so every check
+happens in one place.
+
 ## What tsc doesn't check
 
 - Whether environment variables are set, and their values. Those are read when the app starts.
@@ -125,5 +219,6 @@ src/main.ts(7,36): error TS2345: Argument of type '{ readonly server: { readonly
 
 ## Next.js
 
-`next build` runs its own type check without `--runExternalCode`. `withTyfigo` turns that check off and runs
-`tsc --noEmit --runExternalCode` after the compile instead. See [Next.js](/docs/bundlers/next).
+`next build` runs its own type check, and there's no way to pass `--runExternalCode` to it, so it can't type config imports.
+`withTyfigo` turns Next's check off (`typescript.ignoreBuildErrors`) and runs `tsc --noEmit --runExternalCode` itself after
+the compile. Pass `{ typeCheck: false }` when CI runs tsc separately. See [Next.js](/docs/bundlers/next).

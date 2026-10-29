@@ -121,6 +121,11 @@ config/app.production.config.yaml(7,20): error TS2322: Type 'number' is not assi
 src/main.ts(3,7): error TS2322: Type 'number' is not assignable to type 'string'.
 ```
 
+Without a schema, the types are strict and widened: an environment file can't add a key (so there are no optional sections),
+`logLevel: info` is `string` rather than `'info' | 'debug'`, a placeholder without a default is `string`, and a `loadConfig`
+mismatch is reported at the call rather than on the YAML line. A schema handles each of these; see
+[What tsc checks without a schema](https://tyfigo.vercel.app/docs/type-checking#what-tsc-checks-without-a-schema).
+
 `database.url` has no default, so set `DATABASE_URL` (in `.env` or the environment) before you run the example. Without it, the import fails
 with `Environment variable 'DATABASE_URL' is not set (missing-variable)`.
 
@@ -173,9 +178,12 @@ const env = loadEnv(z.object({ NODE_ENV: z.enum(['development', 'production', 't
 | Jest                         | `'tyfigo/jest'` as the `transform` for config files, with their extensions in `moduleFileExtensions` | [jest](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/jest)       |
 
 Browser builds get the base and environment files inlined, and a `${VAR}` placeholder or an import of `loadEnv` in a client bundle
-fails the build. Server bundles fix the environment when they build: they inline the base, environment and local files, ignore
-`NODE_ENV` at run time for picking layers, and read `.env` files and environment variables when they start. See
-[Browser builds](https://tyfigo.vercel.app/docs/browser-builds).
+fails the build. Server bundles are built once and deployed anywhere: they inline the base, local and every environment's
+files, pick the layers by `NODE_ENV` when they start (unless the plugin's `environment` option fixes it), and read `.env` files
+and environment variables then. See [Server bundles](https://tyfigo.vercel.app/docs/browser-builds#server-bundles).
+
+`next build` can't pass `--runExternalCode` to its type check, so `withTyfigo` turns Next's check off and runs
+`tsc --noEmit --runExternalCode` itself after the compile. See [Next.js](https://tyfigo.vercel.app/docs/bundlers/next).
 
 ## Formats
 

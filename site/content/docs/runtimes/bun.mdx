@@ -54,7 +54,8 @@ await Bun.build({
 ```
 
 A `browser` target inlines the base and environment files ([Browser builds](/docs/browser-builds)). Other targets inline the
-layer files of the build's environment ([Server bundles](/docs/browser-builds#server-bundles)) and read `.env` files and environment variables when the bundle runs.
+layer files of every environment, pick them by `NODE_ENV` and read `.env` files and environment variables when the bundle runs
+([Server bundles](/docs/browser-builds#server-bundles)). `tyfigo({ environment: 'production' })` fixes the environment.
 
 Bun loads `.env` files into `process.env` on its own; tyfigo reads them itself either way and never writes `process.env`.
 See the [bun example](https://github.com/imranbarbhuiya/tyfigo/tree/main/examples/bun).

@@ -36,7 +36,9 @@ const settings = loadConfig(config, Config);
 ```
 
 The config's type has to fit the schema's input type, so a schema that expects a string where the file has a number is a
-[type error at the call](/docs/type-checking#what-tsc-reports). Keys the schema doesn't list are allowed.
+[type error at the call](/docs/type-checking#what-tsc-reports). Keys the schema doesn't list are allowed, and a widened `string`
+fits a schema that expects literals such as `z.enum([...])`. See
+[What tsc checks without a schema](/docs/type-checking#what-tsc-checks-without-a-schema) for the cases a schema covers.
 
 When validation fails it throws a `ConfigValidationError` that lists every issue, each with the `file:line:column` the value
 came from (the environment file that set it, if one did):
