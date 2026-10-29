@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -26,6 +26,12 @@ const evaluateError = async (directory: string, code: string) => {
 		return error as ConfigModuleError;
 	}
 	throw new Error('Expected the module to throw');
+};
+
+const evaluateUnder = async (code: string, environment: string) => {
+	vi.stubEnv('NODE_ENV', environment);
+	vi.spyOn(process, 'cwd').mockReturnValue(await makeProject({}));
+	return (await evaluate(await makeProject({}), code)) as Record<string, unknown>;
 };
 
 afterEach(() => {
@@ -328,5 +334,117 @@ describe('load (bundled server)', () => {
 				'app.config.toml:2:9 - set NAME (missing-variable)',
 			].join('\n'),
 		);
+	});
+
+	const deployFiles = {
+		'package.json': '{}',
+		'config/app.config.yaml': 'tier: base\ndb:\n  pool: 5\n',
+		'config/app.production.config.yaml': 'tier: production\n',
+		'config/app.staging.config.yaml': 'tier: staging\n',
+		'app.production.local.config.yaml': 'db:\n  pool: 50\n',
+		'app.local.config.yaml': 'db:\n  pool: 10\n',
+	};
+
+	it('inlines every environment and picks one by NODE_ENV when it runs', async () => {
+		const root = await makeProject(deployFiles);
+		vi.stubEnv('NODE_ENV', 'staging');
+		const result = load(join(root, 'config/app.config.yaml'), { target: 'server', bundle: true, runtime });
+		expect(result.problems).toEqual([]);
+		const bundle = {
+			file: 'config/app.config.yaml',
+			layers: [
+				{ file: 'config/app.config.yaml', kind: 'base', text: deployFiles['config/app.config.yaml'] },
+				{
+					file: 'config/app.production.config.yaml',
+					kind: 'environment',
+					environment: 'production',
+					text: deployFiles['config/app.production.config.yaml'],
+				},
+				{
+					file: 'config/app.staging.config.yaml',
+					kind: 'environment',
+					environment: 'staging',
+					text: deployFiles['config/app.staging.config.yaml'],
+				},
+				{ file: 'app.local.config.yaml', kind: 'local', text: deployFiles['app.local.config.yaml'] },
+				{
+					file: 'app.production.local.config.yaml',
+					kind: 'environment-local',
+					environment: 'production',
+					text: deployFiles['app.production.local.config.yaml'],
+				},
+			],
+		};
+		expect(result.code).toBe(
+			`import { resolveBundledConfigModule } from ${JSON.stringify(runtime)};\n\nexport default resolveBundledConfigModule(${JSON.stringify(bundle)});\n`,
+		);
+
+		const production = await evaluateUnder(result.code, 'production');
+		expect(production).toEqual({ tier: 'production', db: { pool: 50 } });
+		expect(getConfigSource(production)?.layers).toEqual([
+			'config/app.config.yaml',
+			'config/app.production.config.yaml',
+			'app.local.config.yaml',
+			'app.production.local.config.yaml',
+		]);
+		expect(await evaluateUnder(result.code, 'staging')).toEqual({ tier: 'staging', db: { pool: 10 } });
+		expect(await evaluateUnder(result.code, 'development')).toEqual({ tier: 'base', db: { pool: 10 } });
+		expect(await evaluateUnder(result.code, '')).toEqual({ tier: 'base', db: { pool: 10 } });
+	});
+
+	it('uses only the base file when no environment file matches at run time', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'app.config.yaml': 'tier: base\n',
+			'app.production.config.yaml': 'tier: production\n',
+		});
+		const result = load(join(root, 'app.config.yaml'), { target: 'server', bundle: true, runtime });
+		const config = await evaluateUnder(result.code, 'preview');
+		expect(config).toEqual({ tier: 'base' });
+		expect(getConfigSource(config)?.layers).toEqual(['app.config.yaml']);
+	});
+
+	it('keeps the environment it was built for', async () => {
+		const root = await makeProject(deployFiles);
+		const result = load(join(root, 'config/app.config.yaml'), {
+			target: 'server',
+			bundle: true,
+			environment: 'staging',
+			runtime,
+		});
+		expect(result.code).not.toContain('production');
+		const config = await evaluateUnder(result.code, 'production');
+		expect(config).toEqual({ tier: 'staging', db: { pool: 10 } });
+		expect(getConfigSource(config)?.environment).toBe('staging');
+	});
+
+	it('watches the layer and .env files of every environment it found and of NODE_ENV', async () => {
+		const root = await makeProject(deployFiles);
+		vi.stubEnv('NODE_ENV', 'development');
+		const result = load(join(root, 'config/app.config.yaml'), { target: 'server', bundle: true, runtime });
+		expect(result.watchFiles).toEqual(
+			expect.arrayContaining([
+				join(root, 'config/app.production.config.yaml'),
+				join(root, 'config/app.staging.config.yaml'),
+				join(root, 'app.production.local.config.yaml'),
+				join(root, 'app.staging.local.config.yaml'),
+				join(root, '.env.staging'),
+				join(root, 'config/app.development.config.yaml'),
+			]),
+		);
+	});
+
+	it('reports problems in every environment file when it builds', async () => {
+		const root = await makeProject({
+			...deployFiles,
+			'config/app.staging.config.yaml': 'tier: 1\n',
+			'app.preview.local.config.yaml': 'db:\n  size: 1\n',
+		});
+		vi.stubEnv('NODE_ENV', 'production');
+		const result = load(join(root, 'config/app.config.yaml'), { target: 'server', bundle: true, runtime });
+		expect(result.problems.map((problem) => [relative(root, problem.file), problem.code])).toEqual([
+			[join('app.preview.local.config.yaml'), 'unknown-key'],
+			[join('config', 'app.staging.config.yaml'), 'type-mismatch'],
+		]);
 	});
 });

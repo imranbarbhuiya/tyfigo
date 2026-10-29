@@ -2,7 +2,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 
 import { Effect } from 'effect';
 
-import { findFile, isFile, searchDirectories } from './files.ts';
+import { findFile, isFile, listDirectory, searchDirectories } from './files.ts';
 import { parseConfigFileName } from './formats/index.ts';
 
 export type LayerKind = 'base' | 'environment' | 'local' | 'environment-local';
@@ -38,4 +38,27 @@ export const discoverLayers = Effect.fn('discoverLayers')(function* (baseFile: s
 	}
 
 	return layers;
+});
+
+/**
+ * The environment names that have a layer file for a base config file: every `app.<environment>.config.yaml` next to it, and
+ * every `app.<environment>.local.config.yaml` where {@link discoverLayers} searches local files. Sorted.
+ */
+export const discoverEnvironments = Effect.fn('discoverEnvironments')(function* (baseFile: string) {
+	const file = resolve(baseFile);
+	const name = parseConfigFileName(basename(file));
+	if (!name) return [];
+
+	const environments = new Set<string>();
+	for (const directory of yield* searchDirectories(file)) {
+		for (const entry of yield* listDirectory(directory)) {
+			if (!entry.startsWith(`${name.stem}.`) || !entry.endsWith(name.suffix)) continue;
+			const middle = entry.slice(name.stem.length + 1, -name.suffix.length);
+			const local = middle.endsWith('.local');
+			const environment = local ? middle.slice(0, -'.local'.length) : middle;
+			if (!local && directory !== dirname(file)) continue;
+			if (/^[^.]+$/u.test(environment) && environment !== 'local') environments.add(environment);
+		}
+	}
+	return [...environments].toSorted((a, b) => a.localeCompare(b));
 });

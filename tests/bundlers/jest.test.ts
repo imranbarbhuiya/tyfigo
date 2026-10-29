@@ -16,7 +16,7 @@ const runtime = useRuntime();
 const transformer = fileURLToPath(new URL('../../src/plugins/jest.ts', import.meta.url));
 const jest = fileURLToPath(new URL('../../node_modules/jest/bin/jest.js', import.meta.url));
 
-const expected = { port: 3_000, secret: 'from-build-machine', name: 'local-server' };
+const expected = { port: 3_000, secret: 'from-build-machine', name: 'local-server', tier: 'production' };
 
 const jestConfig = (esm = false) =>
 	JSON.stringify({

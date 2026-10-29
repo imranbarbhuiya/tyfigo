@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { discoverLayers } from '../../src/core/layers.ts';
+import { discoverEnvironments, discoverLayers } from '../../src/core/layers.ts';
 import { makeProject } from '../helpers.ts';
 
 describe('discoverLayers', () => {
@@ -61,5 +61,27 @@ describe('discoverLayers', () => {
 
 	it('returns nothing for a file it does not claim', async () => {
 		expect(await Effect.runPromise(discoverLayers('/tmp/app.yaml'))).toEqual([]);
+	});
+});
+
+describe('discoverEnvironments', () => {
+	it('lists environments with a file next to the base file or a local file in the project root', async () => {
+		const root = await makeProject({
+			'package.json': '{}',
+			'config/app.config.yaml': 'a: 1',
+			'config/app.staging.config.yaml': 'a: 2',
+			'config/app.production.config.yaml': 'a: 3',
+			'config/app.local.config.yaml': 'a: 4',
+			'config/app.test.config.toml': 'a = 5',
+			'config/cache.qa.config.yaml': 'a: 6',
+			'config/app.a.b.config.yaml': 'a: 7',
+			'app.preview.local.config.yaml': 'a: 8',
+			'app.dev.config.yaml': 'a: 9',
+		});
+		expect(await Effect.runPromise(discoverEnvironments(join(root, 'config/app.config.yaml')))).toEqual([
+			'preview',
+			'production',
+			'staging',
+		]);
 	});
 });

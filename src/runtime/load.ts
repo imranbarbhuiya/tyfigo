@@ -5,6 +5,7 @@ import { Effect } from 'effect';
 import { findProjectRoot, isFile, searchDirectories } from '../core/files.ts';
 import {
 	configSuffixes,
+	discoverEnvironments,
 	envFileNames,
 	fileProblem,
 	formatPath,
@@ -19,8 +20,8 @@ import {
 	SourceIndex,
 } from '../core/index.ts';
 
-import type { Path, PositionMap, Problem } from '../core/index.ts';
-import type { BundledConfig } from './resolve.ts';
+import type { LayerKind, Path, PositionMap, Problem, ResolvedConfig } from '../core/index.ts';
+import type { BundledConfig, BundledLayer } from './resolve.ts';
 
 export type LoadTarget = 'server' | 'browser';
 
@@ -32,7 +33,8 @@ export interface LoadOptions {
 	readonly target: LoadTarget;
 	/**
 	 * The environment name, such as the bundler's mode. Defaults to `NODE_ENV`, read when the server module runs and when
-	 * `load` runs for the browser.
+	 * `load` runs for the browser. A bundled server module inlines only this environment's files when it is given, and every
+	 * environment's files otherwise.
 	 */
 	readonly environment?: string | undefined;
 	/**
@@ -40,8 +42,9 @@ export interface LoadOptions {
 	 */
 	readonly runtime?: string | undefined;
 	/**
-	 * For `server`: inline the text of the layer files that exist at build time, and read `.env` files and environment variables
-	 * from `process.cwd()` when the module runs, so a bundle does not depend on the paths of the machine that built it.
+	 * For `server`: inline the text of the layer files that exist at build time, for every environment unless `environment` is
+	 * given, and pick the environment's layers and read `.env` files and environment variables from `process.cwd()` when the
+	 * module runs, so a bundle does not depend on the paths of the machine that built it.
 	 */
 	readonly bundle?: boolean | undefined;
 }
@@ -182,28 +185,55 @@ const browserModule = Effect.fn('browserModule')(function* (file: string, option
 	} satisfies LoadResult;
 });
 
+const layerOrder: Readonly<Record<LayerKind, number>> = { base: 0, environment: 1, local: 2, 'environment-local': 3 };
+
 const bundledServerModule = Effect.fn('bundledServerModule')(function* (file: string, options: LoadOptions) {
-	const environment = options.environment ?? (processEnv().NODE_ENV || undefined);
-	const result = yield* resolveConfig(file, { environment });
-	const problems = result.problems.filter(
-		(problem) => problem.code !== 'missing-variable' && problem.code !== 'placeholder-type',
-	);
-	const root = (yield* findProjectRoot(dirname(result.file))) ?? dirname(result.file);
+	const environments =
+		options.environment === undefined ? [undefined, ...(yield* discoverEnvironments(file))] : [options.environment];
+	const results: ResolvedConfig[] = [];
+	for (const environment of environments) {
+		results.push(
+			yield* resolveConfig(file, environment === undefined ? { layers: ['base', 'local'] } : { environment }),
+		);
+	}
+
+	const root = (yield* findProjectRoot(dirname(file))) ?? dirname(file);
 	const name = (path: string) => relative(root, path).split(sep).join('/');
+	const problems = new Map<string, Problem>();
+	const layers = new Map<string, BundledLayer>();
+	for (const result of results) {
+		for (const problem of result.problems) {
+			if (problem.code === 'missing-variable' || problem.code === 'placeholder-type') continue;
+			problems.set(JSON.stringify([problem.file, problem.start, problem.code, problem.message]), problem);
+		}
+		for (const layer of result.layers) {
+			const specific = layer.kind === 'environment' || layer.kind === 'environment-local';
+			layers.set(layer.file, {
+				file: name(layer.file),
+				kind: layer.kind,
+				...(specific ? { environment: result.environment } : {}),
+				text: layer.text,
+			});
+		}
+	}
 	const bundle: BundledConfig = {
-		file: name(result.file),
-		environment,
-		layers: result.layers.map((layer) => ({ file: name(layer.file), kind: layer.kind, text: layer.text })),
+		file: name(file),
+		...(options.environment === undefined ? {} : { environment: options.environment }),
+		layers: [...layers.values()].toSorted((a, b) => layerOrder[a.kind] - layerOrder[b.kind]),
 	};
 
+	const watchFiles = new Set<string>();
+	for (const environment of new Set([...environments, processEnv().NODE_ENV || undefined])) {
+		for (const watchFile of yield* watchFilesOf(file, environment, 'server')) watchFiles.add(watchFile);
+	}
 	const code =
-		problems.length > 0
-			? failingCode(result.file, problems)
+		problems.size > 0
+			? failingCode(file, [...problems.values()])
 			: `import { resolveBundledConfigModule } from ${JSON.stringify(options.runtime ?? 'tyfigo/runtime')};\n\nexport default resolveBundledConfigModule(${JSON.stringify(bundle)});\n`;
 	return {
 		code,
-		watchFiles: yield* watchFilesOf(result.file, environment, 'server'),
-		problems,
+		watchFiles: [...watchFiles],
+		problems: [...problems.values()],
 	} satisfies LoadResult;
 });
 
