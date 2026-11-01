@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# [0.2.1](https://github.com/imranbarbhuiya/tyfigo/compare/v0.2.0...v0.2.1) - (2026-11-01)
+
+## 🐛 Bug Fixes
+
+- **vite:** Serve config in dev when a layer or .env file is missing (#20) ([e6cc589](https://github.com/imranbarbhuiya/tyfigo/commit/e6cc58966968e07531c95fc6dba0c96c18253246))
+
 # [0.2.0](https://github.com/imranbarbhuiya/tyfigo/compare/v0.1.0...v0.2.0) - (2026-10-29)
 
 ## 🐛 Bug Fixes
